@@ -35,18 +35,6 @@ Experience the complete Fivetran + Snowflake data lifecycle in a 20-minute hands
 
 ---
 
-## Abstract (Option C — Curiosity/Outcome-Driven)
-
-**Title: Build a Complete AI Data Pipeline — Without Opening a Single UI**
-
-No Fivetran dashboard. No Snowflake worksheet. No code editor. Just Snowflake Cortex Code. In this 20-minute hands-on lab, you'll experience a production-quality data pipeline built from scratch — from a PostgreSQL source through Fivetran MDLS to S3 in open Iceberg format, transformed with Fivetran dbt Transformations, brought to life by a Snowflake Cortex Agent that answers business questions in natural language, and activated back to a live business application via Fivetran Activation. You'll see Fivetran's complete data lifecycle — Move, Manage, Transform, Activate — working together to make data AI-ready and deliver intelligence back to where teams work. Whether you're a data engineer, an executive, or just curious about the future of data pipelines, you'll walk away understanding what's possible when Fivetran and Snowflake's AI platform work together.
-
-**Level:** All levels — no technical prerequisites
-**Duration:** 20 minutes
-**Format:** Instructor-led, walk-up, 6 pre-configured laptops provided
-
----
-
 ## Key Phrases for Marketing Use
 
 - "Connectors → Data Agents"
