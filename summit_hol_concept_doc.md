@@ -179,6 +179,49 @@ The **"one skill, two platforms"** story itself reinforces Fivetran's platform n
 
 ---
 
+## Timeline
+
+### March 2026
+| Date | Milestone |
+|------|-----------|
+| **March 27** | Concept document and abstract sent to Marketing |
+
+### April 2026
+| Date | Milestone |
+|------|-----------|
+| **April 1-15** | Build Snowflake lab: Skills, pre-built artifacts, PostgreSQL source, MDLS destination, dbt project, Cortex Agent spec, Activation config, React+Firebase app |
+| **April 15** | **Laptops delivered** — 6 laptops from Fivetran IT shipped to Kelly in Houston (Kelly carries 3, David Hrncir carries 3) |
+| **April 15-30** | Test and iterate Snowflake lab end-to-end. Begin Databricks (DAIS) build — Genie Code skills, Mosaic AI Agent, Unity Catalog, AI/BI semantic layer |
+
+### May 2026
+| Date | Milestone |
+|------|-----------|
+| **May 1-9** | Complete Snowflake lab testing and hardening. Complete Databricks build and testing |
+| **May 12** | **Marketing Review #1** — Demo working Snowflake lab to Marketing. Review booth signage, one-pager, QR code materials, and promotional copy |
+| **May 12-16** | Recruit and onboard 2 additional PSEs/SEs for lab delivery (David Millman confirmed for Snowflake Summit; identify 1+ for DAIS) |
+| **May 19-23** | **Instructor training and dry runs** — Train delivery team on both labs. Run full dry-run sessions on pre-configured laptops. Troubleshoot edge cases. Finalize instructor talking points and timing |
+| **May 26** | **Marketing Review #2** — Final walkthrough with Marketing. Confirm all collateral is printed/ready. Last chance for content or messaging adjustments |
+| **May 27-30** | Final hardening, pack laptops, ship any booth materials |
+
+### June 2026
+| Date | Milestone |
+|------|-----------|
+| **June 2-5** | **Snowflake Summit 2026** — Deliver Snowflake lab at Fivetran booth (Kelly + David Hrncir + David Millman) |
+| **June 9-13** | Post-Summit retro. Apply lessons learned to DAIS lab |
+| **June 16-19** | **Data and AI Summit (DAIS)** — Deliver Databricks lab at Fivetran booth |
+
+### Staffing Plan
+- **Snowflake Summit**: Kelly Kohlleffel, David Hrncir, David Millman (+ 1 TBD)
+- **DAIS**: Kelly Kohlleffel, David Hrncir (+ 2 TBD — recruit from PSE/SE team)
+- Each session needs 1 instructor + at least 1 roving assistant for 6 laptops
+
+### Logistics
+- **Laptops**: 6 laptops requested from Fivetran IT — must arrive in Houston by **April 15**
+- **Laptop split**: Kelly (3) + David Hrncir (3) for travel to both events
+- **Laptop config**: Chrome browser, Cortex Code CLI (or VS Code with Cortex Code extension), pre-loaded Skills — nothing else needed
+
+---
+
 ## Why This Lab Matters
 
 1. **No other vendor can tell this story end-to-end.** Source → Extract & Load → Manage (MDLS) → Transform (dbt) → AI Agent → Move/Activate — all in 20 minutes, all through AI.
