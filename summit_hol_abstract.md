@@ -6,7 +6,7 @@
 2. **Build a Complete AI Data Pipeline — Without Opening a Single UI**  
 3. **One Skill, One Pipeline: Fivetran \+ Snowflake Cortex Code**  
 4. **The 20-Minute Data Agent: Source to Intelligence with Fivetran & Cortex Code**  
-5. **Open Data Infrastructure in Action: Move, Transform, Agent, Activate**  
+5. **Open Data Infrastructure in Action: Move, Manage, Transform, Agent, Activate**  
 6. **AI-Powered Data Pipelines: From PostgreSQL to Cortex Agent in 20 Minutes**
 
 ---
