@@ -38,7 +38,7 @@ Experience the complete Fivetran + Snowflake data lifecycle in a 20-minute hands
 ## Key Phrases for Marketing Use
 
 - "Connectors → Data Agents"
-- "20 minutes, zero UIs, one AI Skill"
+- "20 minutes, zero UIs, one AI Skill, infinite insight"
 - "Open Data Infrastructure in action"
 - "Move, Manage, Transform, Activate — the complete Fivetran data lifecycle"
 - "From source database to AI agent to live application"
