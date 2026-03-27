@@ -27,22 +27,22 @@ The lab is designed to be **repurposed for Data and AI Summit (DAIS)** in the th
 
 A participant walks up to the Fivetran booth, sits down at a laptop, and is guided through six seamless steps — all within Snowflake Cortex Code:
 
-### Lab 1: Discover — Explore Source Data (1-2 min)
+### Step 1: Discover — Explore Source Data (1-2 min)
 The Skill connects to a Google Cloud PostgreSQL database containing a retail e-commerce dataset (orders, customers, products). It shows the schema, sample rows, and row counts. The instructor explains: *"This is a typical operational database — the kind of data every company has but struggles to make actionable."*
 
-### Lab 2: Move — Fivetran Extracts and Loads via MDLS (2-3 min)
+### Step 2: Move — Fivetran Extracts and Loads via MDLS (2-3 min)
 The Skill creates a Fivetran PostgreSQL connector and syncs data to an **S3 Managed Data Lake Service (MDLS) destination** in Apache Iceberg format. While the sync runs (~60-90 seconds), the Skill outlines the MDLS architecture: data lands in S3 as open Iceberg tables, automatically cataloged in **Snowflake Horizon Catalog** via Polaris, and immediately queryable with Snowflake compute. The instructor explains: *"Fivetran just moved data from PostgreSQL to S3 in open format, and Snowflake can already see it. No UI. One command."*
 
-### Lab 3: Transform — dbt Models + Semantic View (2-3 min)
+### Step 3: Transform — dbt Models + Semantic View (2-3 min)
 The Skill triggers **Fivetran dbt Transformations** to run a pre-built dbt project that transforms raw data through bronze, silver, and gold layers — producing analytics-ready views like `customer_orders_summary`, `product_performance`, and `revenue_by_region`. The Skill then creates a **Snowflake Semantic View** that defines business metrics (revenue, order count, average order value) and dimensions (region, channel, customer segment). The instructor explains: *"dbt transformed raw data into business-ready views, and the semantic view is the bridge between your data and AI — it tells the agent what the numbers mean."*
 
-### Lab 4: Agent — Create a Cortex Agent (1-2 min)
+### Step 4: Agent — Create a Cortex Agent (1-2 min)
 The Skill creates a **Snowflake Cortex Agent** via REST API, configured with a Cortex Analyst tool that points to the semantic view. The agent gets a name, description, icon, response instructions, and sample questions — all tuned for the retail dataset. The instructor explains: *"You now have an AI agent that understands your retail data. It can answer business questions in natural language."*
 
-### Lab 5: Ask — Interact with Your Agent (3-5 min)
+### Step 5: Ask — Interact with Your Agent (3-5 min)
 This is the **"wow" moment**. The Skill asks two pre-crafted questions — *"What are our top 5 product categories by revenue this quarter?"* and *"Which customers should we target for a re-engagement campaign?"* — and displays the agent's answers. Then the participant asks their own questions in natural language. The agent generates SQL behind the scenes and returns business insights. Executives, data engineers, and salespeople alike can interact naturally with the data.
 
-### Lab 6: Activate — Push Insights Back to Your App (2 min)
+### Step 6: Activate — Push Insights Back to Your App (2 min)
 The Skill creates a **Fivetran Activation** that pushes a "top customers for re-engagement" view back to a **Firebase database**. A pre-deployed **React application** updates in real time as the activation writes — the participant sees recommendations appear live in the app. The instructor wraps: *"Full circle. Source → pipeline → AI → back to your app. All orchestrated by one Skill. This is what Fivetran + Snowflake + AI looks like in production."*
 
 **Total experience: ~20 minutes.** No SaaS UI opened and no code written with one Skill orchestrating everything.
@@ -53,11 +53,11 @@ The Skill creates a **Fivetran Activation** that pushes a "top customers for re-
 
 | Fivetran Theme | Technology | Lab Step |
 |----------------|-----------|----------|
-| **Move** (Extract & Load) | Fivetran PostgreSQL Connector + Connector SDK Builder | Lab 2 |
-| **Manage** (MDLS) | Fivetran Managed Data Lake Service → S3 Iceberg + Snowflake Horizon Catalog | Lab 2 |
-| **Transform** | Fivetran dbt Transformations (bronze → silver → gold) + Snowflake Semantic Views | Lab 3 |
-| **Activate** (Move Again) | Fivetran Activation → Firebase | Lab 6 |
-| **AI Leverage** | Snowflake Cortex Agent + Cortex Analyst + Cortex Code Skills | Labs 4-5 |
+| **Move** (Extract & Load) | Fivetran PostgreSQL Connector + Connector SDK Builder | Step 2 |
+| **Manage** (MDLS) | Fivetran Managed Data Lake Service → S3 Iceberg + Snowflake Horizon Catalog | Step 2 |
+| **Transform** | Fivetran dbt Transformations (bronze → silver → gold) + Snowflake Semantic Views | Step 3 |
+| **Activate** (Move Again) | Fivetran Activation → Firebase | Step 6 |
+| **AI Leverage** | Snowflake Cortex Agent + Cortex Analyst + Cortex Code Skills | Steps 4-5 |
 
 ### Additional Technologies
 - **Snowflake Cortex Code** — AI coding environment (the participant's entire interface)
@@ -74,9 +74,9 @@ This lab is a live, interactive proof of the "Connectors → Data Agents" flywhe
 
 ### Snowflake FY27 Priorities
 The lab directly maps to Snowflake's three FY27 solution plays which will appeal to Snowflake sellers:
-1. **Modernize the Data Estate** → Lab 2 (Move via MDLS)
-2. **Make Data AI Ready** → Lab 3 (Transform with dbt + Semantic Views)
-3. **Build Enterprise Data Agents** → Labs 4-5 (Cortex Agent creation + interaction)
+1. **Modernize the Data Estate** → Step 2 (Move via MDLS)
+2. **Make Data AI Ready** → Step 3 (Transform with dbt + Semantic Views)
+3. **Build Enterprise Data Agents** → Steps 4-5 (Cortex Agent creation + interaction)
 
 ### Snowflake's "Show, Don't Tell" Mandate
 Every Snowflake SE engagement must demonstrate a downstream AI use case built with Cortex Code. This lab gives Fivetran a turnkey demonstration that Snowflake SEs can reference: *"This is what it looks like when Fivetran data powers a Cortex Agent."*
@@ -123,6 +123,9 @@ Between sessions, the instructor simply says **"reset the lab"** in Cortex Code 
 - Deletes the Fivetran connector created during the session (REST API)
 - Removes the Fivetran Activation sync
 - Verifies both are fully removed
+- Deletes references from the Fivetran-hosted Polaris catalog
+- Deletes all data files and folders beyond the default destination folder in S3
+- Verifies the catalog is clean and files are removed
 
 **Tier 2 — Snowflake Cleanup:**
 - Drops the Cortex Agent (REST API)
