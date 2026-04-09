@@ -9,7 +9,7 @@ Install these before running setup.sh. The script will check for each and tell y
 | Node.js | 18+ | [nodejs.org](https://nodejs.org/) (LTS .pkg) |
 | Python | 3.12+ | [python.org](https://python.org/downloads/) (.pkg) |
 | VSCode | Latest | [code.visualstudio.com](https://code.visualstudio.com/) |
-| Cortex Code CLI | Latest | [Snowflake docs](https://docs.snowflake.com/en/developer-guide/cortex-code/overview) |
+| Cortex Code CLI | Latest | [Snowflake docs](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli) |
 | GitHub CLI | Latest | Auto-installed by setup.sh |
 | Xcode CLT | Latest | Auto-installed by setup.sh |
 
