@@ -128,7 +128,7 @@ if [ -z "$CORTEX_BIN" ]; then
   error "Cortex Code CLI not found."
   echo ""
   echo "      Install Cortex Code from Snowflake:"
-  echo "      https://docs.snowflake.com/en/developer-guide/cortex-code/overview"
+  echo "      https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli"
   echo ""
   echo "      After installation, verify with:  cortex --version"
   echo "      If installed to ~/.local/bin, add to PATH:"
