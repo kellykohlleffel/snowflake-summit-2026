@@ -1,0 +1,104 @@
+{
+  "name": "cortex-code-for-vscode",
+  "displayName": "Cortex Code for VSCode",
+  "description": "A polished VSCode host for the Snowflake Cortex Code CLI. Renders Cortex Code sessions inside a Fivetran Code-inspired webview with chat bubbles, tool call cards, and themed chrome.",
+  "version": "0.1.0",
+  "publisher": "fivetran-kkohlleffel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kellykohlleffel/cortex-code-for-vscode.git"
+  },
+  "icon": "images/snowflake-icon.png",
+  "type": "module",
+  "main": "./dist/extension.cjs",
+  "engines": {
+    "node": ">=18.0.0",
+    "vscode": "^1.96.0"
+  },
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cortex-code-for-vscode",
+          "title": "Cortex Code",
+          "icon": "images/snowflake-activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "cortex-code-for-vscode": [
+        {
+          "type": "webview",
+          "id": "cortex-code-for-vscode.panel",
+          "name": "Cortex Code"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "cortex-code-for-vscode.open",
+        "title": "Cortex Code: Open Sidebar"
+      },
+      {
+        "command": "cortex-code-for-vscode.openTab",
+        "title": "Cortex Code: Open in Editor Tab"
+      },
+      {
+        "command": "cortex-code-for-vscode.restart",
+        "title": "Cortex Code: Restart Session"
+      },
+      {
+        "command": "cortex-code-for-vscode.clear",
+        "title": "Cortex Code: Clear Chat"
+      }
+    ],
+    "configuration": {
+      "title": "Cortex Code",
+      "properties": {
+        "cortexCodeForVscode.binaryPath": {
+          "type": "string",
+          "default": "cortex",
+          "description": "Path to the cortex CLI binary (the extension passes 'code' as the first argument). For example, if your binary is at /usr/local/bin/cortex, leave this as 'cortex'. Override if it lives somewhere else."
+        },
+        "cortexCodeForVscode.cwd": {
+          "type": "string",
+          "default": "",
+          "description": "Working directory for the cortex code subprocess. Empty = VSCode workspace root."
+        },
+        "cortexCodeForVscode.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start a cortex code session when the panel opens."
+        },
+        "cortexCodeForVscode.preferEditorTab": {
+          "type": "boolean",
+          "default": true,
+          "description": "When the sidebar view opens, also open Cortex Code in an editor tab (mimics Fivetran Code's primary-UI behavior). Both surfaces share the same session."
+        },
+        "cortexCodeForVscode.pricingModel": {
+          "type": "string",
+          "enum": ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5-20251001"],
+          "default": "claude-sonnet-4-6",
+          "description": "Which Claude model's pricing to use for the session cost estimate in the footer. Snowflake Cortex Complete reports model='auto' without specifying the actual variant, so we default to Sonnet 4.6. Set this to match your Snowflake Cortex Complete configuration if you know it's different."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "typecheck": "tsc --noEmit",
+    "package": "vsce package",
+    "dev": "tsup --config tsup.config.ts --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0"
+  }
+}

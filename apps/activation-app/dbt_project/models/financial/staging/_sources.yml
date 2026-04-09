@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: financial
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('financial_source_schema', 'FINANCIAL_FINANCIAL_SERVICES') }}"
+    description: "Financial services customer data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: FPR_RECORDS
+        description: "Customer account records with transaction metrics, churn probability, and product recommendations"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each customer record"
+            tests:
+              - unique
+              - not_null

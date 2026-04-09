@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: agriculture
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('agriculture_source_schema', 'AGRICULTURE_AGRICULTURE') }}"
+    description: "Livestock and weather data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: AGR_RECORDS
+        description: "Animal health records with weather conditions, vaccination status, and predicted risk metrics"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each animal health record"
+            tests:
+              - unique
+              - not_null

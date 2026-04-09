@@ -1,0 +1,14 @@
+.env
+.env.example
+.gitignore
+.vscode/**
+src/**
+!src/vscode/webview/icons/**
+references/**
+node_modules/**
+!node_modules/ajv/**
+!node_modules/ajv-formats/**
+tsconfig.json
+CLAUDE.md
+*.md
+!readme.md

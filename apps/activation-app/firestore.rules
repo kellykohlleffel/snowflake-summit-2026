@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Industries collection — read by anyone (the React app), write by API only
+    match /industries/{industryId} {
+      allow read: if true;
+      allow write: if false;  // Writes go through the Cloud Run API with admin SDK
+    }
+  }
+}

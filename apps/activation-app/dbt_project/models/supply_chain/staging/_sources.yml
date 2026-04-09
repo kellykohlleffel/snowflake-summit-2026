@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: supply_chain
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('supply_chain_source_schema', 'SUPPLY_CHAIN_SUPPLY_CHAIN') }}"
+    description: "Supply chain demand forecast data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: SPL_RECORDS
+        description: "Demand forecast records with inventory levels, promotional activity, competitive pricing, and macroeconomic signals"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each demand forecast record"
+            tests:
+              - unique
+              - not_null

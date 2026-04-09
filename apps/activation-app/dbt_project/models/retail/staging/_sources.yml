@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: retail
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('retail_source_schema', 'RETAIL_RETAIL') }}"
+    description: "Retail customer and product data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: RDP_RECORDS
+        description: "Customer order records with pricing, inventory, and satisfaction metrics"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each order record"
+            tests:
+              - unique
+              - not_null
