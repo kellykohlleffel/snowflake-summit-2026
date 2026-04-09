@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- "S" for Snowflake rendered as 3x3 squares in a 3-column, 5-row grid.
+       Matches the visual style of fivetran-code's activity bar icon (squares
+       arranged to form a letter). Uses currentColor so VSCode themes it
+       automatically (active = highlighted, inactive = muted). -->
+  <path d="M4 3h3v3H4zM10 3h3v3h-3zM16 3h3v3h-3zM4 7h3v3H4zM4 11h3v3H4zM10 11h3v3h-3zM16 11h3v3h-3zM16 15h3v3h-3zM4 19h3v3H4zM10 19h3v3h-3zM16 19h3v3h-3z" fill="currentColor"/>
+</svg>

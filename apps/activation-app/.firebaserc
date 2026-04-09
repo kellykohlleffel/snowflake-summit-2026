@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "fivetran-fivetran-248-war-mraw"
+  },
+  "targets": {
+    "fivetran-fivetran-248-war-mraw": {
+      "hosting": {
+        "activation-demo": [
+          "fivetran-activation-demo"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: healthcare
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('healthcare_source_schema', 'HEALTHCARE_HEALTHCARE') }}"
+    description: "Clinical decision support data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: CDS_RECORDS
+        description: "Patient clinical records with treatment outcomes, readmission risk, and medication adherence"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each patient clinical record"
+            tests:
+              - unique
+              - not_null

@@ -1,0 +1,10 @@
+export const VERSION = "0.2.0";
+export const FIVETRAN_API_BASE_URL = "https://api.fivetran.com/v1";
+export const FIVETRAN_API_ACCEPT_HEADER = "application/json;version=2";
+export const DEFAULT_MODEL = "claude-sonnet-4-6";
+export const MAX_TOOL_ROUNDS = 50;
+export const DEFAULT_PAGE_LIMIT = 100;
+export const MAX_RETRIES = 3;
+export const INITIAL_RETRY_DELAY_MS = 1000;
+export const CONFIG_DIR_NAME = ".fivetran-code";
+export const CONFIG_FILE_NAME = "config.json";

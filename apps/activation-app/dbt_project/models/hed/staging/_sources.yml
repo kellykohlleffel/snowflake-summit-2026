@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: hed
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('hed_source_schema', 'HED_HIGHER_EDUCATION') }}"
+    description: "Higher education student records synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: HED_RECORDS
+        description: "Student-level retention records with academic performance, engagement, and intervention metrics"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each student record"
+            tests:
+              - unique
+              - not_null

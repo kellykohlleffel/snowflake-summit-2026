@@ -1,0 +1,114 @@
+name: fivetran_se_ai_solution_demo
+version: '1.0.0'
+config-version: 2
+
+profile: fivetran_se_ai_solution_demo
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+models:
+  fivetran_se_ai_solution_demo:
+    +persist_docs:
+      relation: true
+      columns: true
+
+    # Pharma Clinical Trials
+    pharma:
+      +tags: ['pharma', 'clinical_trials']
+      staging:
+        +materialized: view
+        +schema: pharma_staging
+      marts:
+        +materialized: table
+        +schema: pharma_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: pharma_semantic
+
+    # Retail — Customer Re-engagement
+    retail:
+      +tags: ['retail', 'ecommerce']
+      staging:
+        +materialized: view
+        +schema: retail_staging
+      marts:
+        +materialized: table
+        +schema: retail_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: retail_semantic
+
+    # Higher Education — Student Retention
+    hed:
+      +tags: ['hed', 'education']
+      staging:
+        +materialized: view
+        +schema: hed_staging
+      marts:
+        +materialized: table
+        +schema: hed_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: hed_semantic
+
+    # Financial Services — Transaction Monitoring
+    financial:
+      +tags: ['financial', 'financial_services']
+      staging:
+        +materialized: view
+        +schema: financial_staging
+      marts:
+        +materialized: table
+        +schema: financial_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: financial_semantic
+
+    # Agriculture — Livestock Weather Risk
+    agriculture:
+      +tags: ['agriculture', 'livestock']
+      staging:
+        +materialized: view
+        +schema: agriculture_staging
+      marts:
+        +materialized: table
+        +schema: agriculture_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: agriculture_semantic
+
+    # Supply Chain — Demand Intelligence
+    supply_chain:
+      +tags: ['supply_chain', 'demand_intelligence']
+      staging:
+        +materialized: view
+        +schema: supply_chain_staging
+      marts:
+        +materialized: table
+        +schema: supply_chain_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: supply_chain_semantic
+
+    # Healthcare — Clinical Decision Support
+    healthcare:
+      +tags: ['healthcare', 'clinical']
+      staging:
+        +materialized: view
+        +schema: healthcare_staging
+      marts:
+        +materialized: table
+        +schema: healthcare_marts
+      semantic:
+        +materialized: semantic_view
+        +schema: healthcare_semantic

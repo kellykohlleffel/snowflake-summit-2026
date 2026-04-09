@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+
+# Build outputs
+dist/
+*.vsix
+
+# Credentials (never commit)
+.env
+!.env.example
+
+# OS
+.DS_Store
+
+# Firebase
+.firebase/

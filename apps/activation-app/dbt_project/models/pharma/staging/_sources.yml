@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: pharma
+    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    schema: "{{ var('pharma_source_schema', 'PHARMA_PHARMA') }}"
+    description: "Pharma clinical trials data synced by Fivetran from Google Cloud PostgreSQL"
+    tables:
+      - name: PHR_RECORDS
+        description: "Patient-level clinical trial records with enrollment and outcome metrics"
+        columns:
+          - name: RECORD_ID
+            description: "Unique identifier for each patient-trial record"
+            tests:
+              - unique
+              - not_null

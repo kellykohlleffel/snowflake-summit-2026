@@ -1,0 +1,125 @@
+{
+  "name": "fivetran-code",
+  "version": "0.3.3",
+  "description": "Fivetran Code — conversational Fivetran management agent powered by Claude. VSCode extension + terminal CLI.",
+  "type": "module",
+  "bin": {
+    "fivetran": "./dist/cli.js",
+    "fivetran-code-mcp": "./dist/mcp-server.js"
+  },
+  "main": "./dist/extension.cjs",
+  "scripts": {
+    "dev": "tsx src/cli/index.tsx",
+    "build:cli": "tsup --config tsup.cli.ts",
+    "build:ext": "tsup --config tsup.ext.ts",
+    "build:mcp": "tsup --config tsup.mcp.ts",
+    "build": "npm run build:cli && npm run build:ext && npm run build:mcp",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "publisher": "fivetran",
+  "icon": "images/icon.png",
+  "engines": {
+    "node": ">=18.0.0",
+    "vscode": "^1.96.0"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "fivetran",
+          "title": "Fivetran",
+          "icon": "src/vscode/webview/icons/fivetran.svg"
+        }
+      ]
+    },
+    "views": {
+      "fivetran": [
+        {
+          "type": "webview",
+          "id": "fivetran.chatPanel",
+          "name": "Fivetran Agent"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Fivetran Code",
+      "properties": {
+        "fivetran.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Fivetran API Key"
+        },
+        "fivetran.apiSecret": {
+          "type": "string",
+          "default": "",
+          "description": "Fivetran API Secret"
+        },
+        "fivetran.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Anthropic API Key for Claude (or use Auth Token for Max subscription)"
+        },
+        "fivetran.anthropicAuthToken": {
+          "type": "string",
+          "default": "",
+          "description": "Claude Max subscription auth token (from 'claude setup-token'). Takes priority over API Key."
+        },
+        "fivetran.model": {
+          "type": "string",
+          "default": "claude-sonnet-4-6",
+          "description": "Claude model to use"
+        },
+        "fivetran.preferEditorTab": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-open the editor tab when clicking the Fivetran activity bar icon"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "fivetran.openChat",
+        "title": "Fivetran: Open Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "fivetran.openSidebar",
+        "title": "Fivetran: Open Sidebar"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "fivetran.openChat",
+          "when": "view == fivetran.chatPanel",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "activationEvents": [],
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@inkjs/ui": "^2.0.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "commander": "^12.0.0",
+    "dotenv": "^17.3.1",
+    "ink": "^5.1.0",
+    "ink-text-input": "^6.0.0",
+    "marked": "^15.0.0",
+    "react": "^18.3.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/vscode": "^1.96.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  }
+}
