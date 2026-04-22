@@ -3,8 +3,38 @@ set -e
 
 # Snowflake Summit 2026 HOL -- Bootstrap Script
 # Run this after cloning the repo. Safe to re-run -- picks up where it left off.
+#
+# Usage:
+#   ./setup.sh              # Dev flow (Kelly's laptop) -- placeholder credential files
+#   ./setup.sh <1-7>        # Lab-laptop flow -- pulls per-labuser creds from 1Password
+#
+# When invoked with a LABUSER_NUM argument, setup.sh additionally:
+#   - Pulls credentials from the "Snowflake Summit and BDL 2026 Lab Users" 1P item
+#   - Backs up any existing ~/.fivetran-code/config.json, ~/.snowflake/connections.toml,
+#     and mcp-servers/se-demo/.env to *.backup-{timestamp} before overwriting
+#   - Sets HOL_INSTRUCTOR=true iff LABUSER_NUM=7
+#   - Sets DBT_PROFILE_TARGET=lab so dbt uses the `lab` target from profiles.yml
+#   - Sets LAPTOP_ID=laptop{N} for activation app per-laptop namespacing
 
 TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# --- Parse LABUSER_NUM arg (optional) ---
+LABUSER_NUM="${1:-}"
+if [ -n "$LABUSER_NUM" ]; then
+  if ! [[ "$LABUSER_NUM" =~ ^[1-7]$ ]]; then
+    echo "Error: LABUSER_NUM must be 1-7 (got '$LABUSER_NUM')" >&2
+    echo "Usage: ./setup.sh [1-7]  (no arg = dev flow)" >&2
+    exit 1
+  fi
+  LAB_MODE=1
+  echo "[setup.sh] Running in LAB MODE as labuser ${LABUSER_NUM}"
+else
+  LAB_MODE=0
+fi
+
+# 1P vault identifiers (stable IDs — rename-proof)
+OP_VAULT_ID="omjghrbq7wfvvwu4kn67y5sag4"
+OP_ITEM_ID="xry7itj66x4zcgecyjuqcn6qdy"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -443,6 +473,188 @@ else
     echo "        \"args\": [\"$SE_DEMO_SERVER\"],"
     echo "        \"env\": {}"
     echo "      }"
+  fi
+fi
+
+# -------------------------------------------
+# Step 11: Lab-mode credential population (LABUSER_NUM only)
+# -------------------------------------------
+if [ "$LAB_MODE" = "1" ]; then
+  step "11" "Lab mode: pulling labuser ${LABUSER_NUM} credentials from 1Password..."
+
+  # Verify op CLI available
+  if ! command -v op &> /dev/null; then
+    error "1Password CLI ('op') not found."
+    echo "      Install the .pkg from: https://1password.com/downloads/command-line/"
+    echo "      After install, run: op signin"
+    echo "      Then re-run: ./setup.sh $LABUSER_NUM"
+    pause_and_exit
+  fi
+
+  # Verify signed in
+  if ! op whoami &> /dev/null; then
+    warn "1Password CLI is not signed in. Signing in now..."
+    op signin
+    if ! op whoami &> /dev/null; then
+      error "1Password sign-in failed. Re-run: ./setup.sh $LABUSER_NUM"
+      pause_and_exit
+    fi
+  fi
+
+  info "1Password CLI signed in as $(op whoami 2>&1 | grep -i email | awk '{print $2}' || echo 'user')"
+
+  # Helper — read from our Summit 2026 item, using stable IDs
+  # Sections: "Shared Lab Config", "LAB USER 1".."LAB USER 6", "LAB USER 7 (INSTRUCTOR)"
+  op_read() {
+    local path="$1"
+    op read "op://${OP_VAULT_ID}/${OP_ITEM_ID}/${path}" 2>/dev/null || true
+  }
+
+  # Section name has "(INSTRUCTOR)" suffix for labuser 7 (per 1P vault structure)
+  if [ "$LABUSER_NUM" = "7" ]; then
+    LAB_SECTION="LAB USER 7 (INSTRUCTOR)"
+  else
+    LAB_SECTION="LAB USER $LABUSER_NUM"
+  fi
+
+  echo "  Reading 1P item (vault: ${OP_VAULT_ID}, item: ${OP_ITEM_ID})..."
+
+  SNOWFLAKE_ACCOUNT_VAL=$(op_read "snowflake_account")
+  SNOWFLAKE_WAREHOUSE_VAL=$(op_read "snowflake_warehouse")
+  SHARED_LAB_PASSWORD=$(op_read "password")
+
+  SNOWFLAKE_PAT_VAL=$(op_read "${LAB_SECTION}/snowflake_pat")
+  FIVETRAN_KEY_B64=$(op_read "${LAB_SECTION}/fivetran_key_b64")
+  FIVETRAN_GROUP_ID_VAL=$(op_read "${LAB_SECTION}/fivetran_group_id")
+
+  # PG source: hardcoded non-secret values, pg_password from 1P
+  PG_HOL_HOST_VAL="34.94.122.157"
+  PG_HOL_PORT_VAL="5432"
+  PG_HOL_DATABASE_VAL="industry-se-demo"
+  PG_HOL_USER_VAL="fivetran"
+  PG_HOL_PASSWORD_VAL=$(op_read "G1 POSTGRESQL DATA SOURCE/pg_password")
+
+  # Validate required fields
+  for var in SNOWFLAKE_ACCOUNT_VAL SNOWFLAKE_WAREHOUSE_VAL SNOWFLAKE_PAT_VAL FIVETRAN_KEY_B64 FIVETRAN_GROUP_ID_VAL; do
+    if [ -z "${!var}" ]; then
+      error "Missing 1P value: $var (check op:// path resolves in the $LAB_SECTION section)"
+      pause_and_exit
+    fi
+  done
+
+  # Decode base64 Fivetran key to separate key + secret
+  DECODED_FT=$(echo -n "$FIVETRAN_KEY_B64" | base64 -d 2>/dev/null || true)
+  FIVETRAN_API_KEY_VAL="${DECODED_FT%%:*}"
+  FIVETRAN_API_SECRET_VAL="${DECODED_FT##*:}"
+  if [ -z "$FIVETRAN_API_KEY_VAL" ] || [ -z "$FIVETRAN_API_SECRET_VAL" ]; then
+    error "Failed to decode fivetran_key_b64 from 1P"
+    pause_and_exit
+  fi
+
+  # Derive per-labuser values
+  SF_LAB_USER="SF_LABUSER${LABUSER_NUM}_USER"
+  SF_LAB_ROLE="SF_LABUSER${LABUSER_NUM}_ROLE"
+  SF_LAB_DB="SF_LABUSER${LABUSER_NUM}_DB"
+  LAPTOP_ID_VAL="laptop${LABUSER_NUM}"
+  if [ "$LABUSER_NUM" = "7" ]; then
+    HOL_INSTRUCTOR_VAL="true"
+  else
+    HOL_INSTRUCTOR_VAL="false"
+  fi
+
+  info "Resolved identity: user=$SF_LAB_USER role=$SF_LAB_ROLE db=$SF_LAB_DB laptop_id=$LAPTOP_ID_VAL instructor=$HOL_INSTRUCTOR_VAL"
+
+  # Backup existing config files before overwriting
+  TS=$(date +%Y%m%d-%H%M%S)
+  BACKUP_DIR="$HOME/.summit-hol-backups/${TS}-labuser${LABUSER_NUM}"
+  mkdir -p "$BACKUP_DIR"
+
+  for f in "$CONFIG_FILE" "$SF_CONN" "$TOOLKIT_DIR/mcp-servers/se-demo/.env"; do
+    if [ -f "$f" ]; then
+      cp "$f" "$BACKUP_DIR/$(basename "$f")"
+      echo "  Backed up: $f -> $BACKUP_DIR/"
+    fi
+  done
+  info "Config backups in $BACKUP_DIR"
+
+  # Write lab-mode ~/.fivetran-code/config.json (lab user's scoped API key + PAT)
+  cat > "$CONFIG_FILE" <<CONFIGEOF
+{
+  "fivetranApiKey": "${FIVETRAN_API_KEY_VAL}",
+  "fivetranApiSecret": "${FIVETRAN_API_SECRET_VAL}",
+  "snowflakeAccount": "${SNOWFLAKE_ACCOUNT_VAL}",
+  "snowflakePatToken": "${SNOWFLAKE_PAT_VAL}"
+}
+CONFIGEOF
+  chmod 600 "$CONFIG_FILE"
+  info "Wrote lab creds to $CONFIG_FILE"
+
+  # Note: anthropicApiKey intentionally omitted on booth laptops. On SE personal
+  # laptops running ./setup.sh <N>, the existing anthropicApiKey in config.json
+  # gets overwritten by this block — SEs should re-add their personal key after
+  # a lab-mode setup run if they want the token-count footer to work.
+
+  # Write lab-mode ~/.snowflake/connections.toml
+  cat > "$SF_CONN" <<SFEOF
+default_connection_name = "summit-lab"
+
+[summit-lab]
+account = "${SNOWFLAKE_ACCOUNT_VAL}"
+user = "${SF_LAB_USER}"
+password = "${SNOWFLAKE_PAT_VAL}"
+warehouse = "${SNOWFLAKE_WAREHOUSE_VAL}"
+database = "${SF_LAB_DB}"
+role = "${SF_LAB_ROLE}"
+SFEOF
+  chmod 600 "$SF_CONN"
+  info "Wrote lab creds to $SF_CONN"
+
+  # Write lab-mode mcp-servers/se-demo/.env
+  SE_DEMO_ENV="$TOOLKIT_DIR/mcp-servers/se-demo/.env"
+  DBT_VENV_PATH="$TOOLKIT_DIR/mcp-servers/se-demo/.venv/bin/dbt"
+  DBT_PROJECT_PATH="$TOOLKIT_DIR/apps/activation-app/dbt_project"
+
+  cat > "$SE_DEMO_ENV" <<ENVEOF
+# Lab-mode .env — generated by setup.sh on $(date)
+# Backup of prior .env: ${BACKUP_DIR}/.env
+LABUSER_NUM=${LABUSER_NUM}
+HOL_INSTRUCTOR=${HOL_INSTRUCTOR_VAL}
+LAPTOP_ID=${LAPTOP_ID_VAL}
+
+SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT_VAL}
+SNOWFLAKE_USER=${SF_LAB_USER}
+SNOWFLAKE_PAT=${SNOWFLAKE_PAT_VAL}
+SNOWFLAKE_PASSWORD=${SNOWFLAKE_PAT_VAL}
+SNOWFLAKE_AUTH_TYPE=pat
+SNOWFLAKE_ROLE=${SF_LAB_ROLE}
+SNOWFLAKE_WAREHOUSE=${SNOWFLAKE_WAREHOUSE_VAL}
+SNOWFLAKE_DATABASE=${SF_LAB_DB}
+
+DBT_PROFILE_TARGET=lab
+DBT_PATH=${DBT_VENV_PATH}
+DBT_PROJECT_DIR=${DBT_PROJECT_PATH}
+DBT_PROFILES_DIR=${DBT_PROJECT_PATH}
+
+FIVETRAN_API_KEY=${FIVETRAN_API_KEY_VAL}
+FIVETRAN_API_SECRET=${FIVETRAN_API_SECRET_VAL}
+FIVETRAN_GROUP_ID=${FIVETRAN_GROUP_ID_VAL}
+
+ACTIVATION_API_URL=https://fivetran-activation-api-81810785507.us-central1.run.app
+
+PG_HOL_HOST=${PG_HOL_HOST_VAL}
+PG_HOL_PORT=${PG_HOL_PORT_VAL}
+PG_HOL_DATABASE=${PG_HOL_DATABASE_VAL}
+PG_HOL_USER=${PG_HOL_USER_VAL}
+PG_HOL_PASSWORD=${PG_HOL_PASSWORD_VAL}
+ENVEOF
+  chmod 600 "$SE_DEMO_ENV"
+  info "Wrote lab creds to $SE_DEMO_ENV (LAPTOP_ID=$LAPTOP_ID_VAL, HOL_INSTRUCTOR=$HOL_INSTRUCTOR_VAL)"
+
+  # Run verification if verify.sh exists
+  if [ -x "$TOOLKIT_DIR/setup/verify.sh" ]; then
+    echo ""
+    info "Running verify.sh..."
+    "$TOOLKIT_DIR/setup/verify.sh" || warn "verify.sh reported issues — review above"
   fi
 fi
 
