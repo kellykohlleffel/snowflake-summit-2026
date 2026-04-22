@@ -357,14 +357,14 @@ info "SE Demo MCP Server ready"
 # -------------------------------------------
 step "8" "Installing HOL skill files..."
 
-SKILL_SRC="$TOOLKIT_DIR/skills/fivetran-snowflake-hol-sfsummit2026"
-SKILL_DST="$HOME/.claude/skills/fivetran-snowflake-hol-sfsummit2026"
+SKILL_SRC="$TOOLKIT_DIR/skills/fivetran-snowflake-hol-sfsummit2026-v2"
+SKILL_DST="$HOME/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2"
 
 if [ -d "$SKILL_SRC" ]; then
   mkdir -p "$HOME/.claude/skills"
   rm -rf "$SKILL_DST"
   cp -r "$SKILL_SRC" "$HOME/.claude/skills/"
-  info "HOL skill installed to ~/.claude/skills/fivetran-snowflake-hol-sfsummit2026/"
+  info "HOL skill installed to ~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2/"
 else
   error "Skill source not found at $SKILL_SRC"
   exit 1
@@ -718,12 +718,12 @@ if [ "$NEEDS_CREDS" -eq 1 ]; then
   echo "  2. Reload VSCode: Cmd+Shift+P > 'Developer: Reload Window'"
   echo "  3. Click the Snowflake icon in the activity bar"
   echo "  4. Type: list my groups (to verify Fivetran MCP server)"
-  echo "  5. Type: /fivetran-snowflake-hol-sfsummit2026 (to run the HOL)"
+  echo "  5. Type: /fivetran-snowflake-hol-sfsummit2026-v2 (to run the HOL)"
 else
   echo "  1. Reload VSCode: Cmd+Shift+P > 'Developer: Reload Window'"
   echo "  2. Click the Snowflake icon in the activity bar"
   echo "  3. Type: list my groups (to verify Fivetran MCP server)"
-  echo "  4. Type: /fivetran-snowflake-hol-sfsummit2026 (to run the HOL)"
+  echo "  4. Type: /fivetran-snowflake-hol-sfsummit2026-v2 (to run the HOL)"
 fi
 echo ""
 echo "Docs:"

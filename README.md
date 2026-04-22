@@ -20,7 +20,7 @@ A self-contained repo for running the Fivetran ODI (Open Data Integration) hands
 The lab is driven by a single slash command in Cortex Code:
 
 ```
-/fivetran-snowflake-hol-sfsummit2026
+/fivetran-snowflake-hol-sfsummit2026-v2
 ```
 
 This triggers a guided 7-step flow:
