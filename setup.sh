@@ -32,9 +32,10 @@ else
   LAB_MODE=0
 fi
 
-# 1P vault identifiers (stable IDs — rename-proof)
-OP_VAULT_ID="omjghrbq7wfvvwu4kn67y5sag4"
-OP_ITEM_ID="xry7itj66x4zcgecyjuqcn6qdy"
+# Per-laptop credential file location. Lab mode expects this file to exist on
+# the laptop before setup.sh runs — staged once via scp/USB from Kelly's laptop.
+# Not committed (setup/creds/ is in .gitignore).
+LAB_CREDS_DIR="${TOOLKIT_DIR}/setup/creds"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -480,64 +481,56 @@ fi
 # Step 11: Lab-mode credential population (LABUSER_NUM only)
 # -------------------------------------------
 if [ "$LAB_MODE" = "1" ]; then
-  step "11" "Lab mode: pulling labuser ${LABUSER_NUM} credentials from 1Password..."
+  step "11" "Lab mode: loading labuser ${LABUSER_NUM} credentials from setup/creds/..."
 
-  # Verify op CLI available
-  if ! command -v op &> /dev/null; then
-    error "1Password CLI ('op') not found."
-    echo "      Install the .pkg from: https://1password.com/downloads/command-line/"
-    echo "      After install, run: op signin"
-    echo "      Then re-run: ./setup.sh $LABUSER_NUM"
+  # Per-laptop credential file — must be pre-staged on the laptop (scp/USB).
+  # NOT committed to the repo (setup/creds/ is in .gitignore).
+  CRED_FILE="${LAB_CREDS_DIR}/labuser${LABUSER_NUM}.env"
+
+  if [ ! -f "$CRED_FILE" ]; then
+    error "Credential file not found: $CRED_FILE"
+    echo ""
+    echo "      Lab-mode setup requires a pre-staged .env file for this laptop."
+    echo "      Ask Kelly for the labuser${LABUSER_NUM}.env file and drop it at:"
+    echo "        $CRED_FILE"
+    echo ""
+    echo "      Then re-run:  ./setup.sh $LABUSER_NUM"
     pause_and_exit
   fi
 
-  # Verify signed in
-  if ! op whoami &> /dev/null; then
-    warn "1Password CLI is not signed in. Signing in now..."
-    op signin
-    if ! op whoami &> /dev/null; then
-      error "1Password sign-in failed. Re-run: ./setup.sh $LABUSER_NUM"
-      pause_and_exit
-    fi
-  fi
+  # Tighten perms if loose (may warn on git-checkout that doesn't preserve mode)
+  chmod 600 "$CRED_FILE" 2>/dev/null || true
 
-  info "1Password CLI signed in as $(op whoami 2>&1 | grep -i email | awk '{print $2}' || echo 'user')"
+  # Source the credential file. All variables (SNOWFLAKE_ACCOUNT, SNOWFLAKE_PAT,
+  # FIVETRAN_KEY_B64, etc.) are loaded into this shell process only — not
+  # exported to subshells beyond this script.
+  # shellcheck disable=SC1090
+  set -a
+  source "$CRED_FILE"
+  set +a
 
-  # Helper — read from our Summit 2026 item, using stable IDs
-  # Sections: "Shared Lab Config", "LAB USER 1".."LAB USER 6", "LAB USER 7 (INSTRUCTOR)"
-  op_read() {
-    local path="$1"
-    op read "op://${OP_VAULT_ID}/${OP_ITEM_ID}/${path}" 2>/dev/null || true
-  }
+  info "Loaded credentials from $CRED_FILE"
 
-  # Section name has "(INSTRUCTOR)" suffix for labuser 7 (per 1P vault structure)
-  if [ "$LABUSER_NUM" = "7" ]; then
-    LAB_SECTION="LAB USER 7 (INSTRUCTOR)"
-  else
-    LAB_SECTION="LAB USER $LABUSER_NUM"
-  fi
+  # Map .env variable names to the internal variable names used below.
+  # This keeps the rest of the lab-mode block unchanged.
+  SNOWFLAKE_ACCOUNT_VAL="${SNOWFLAKE_ACCOUNT:-}"
+  SNOWFLAKE_WAREHOUSE_VAL="${SNOWFLAKE_WAREHOUSE:-SF_LAB_WH}"
+  SNOWFLAKE_PAT_VAL="${SNOWFLAKE_PAT:-}"
+  FIVETRAN_KEY_B64="${FIVETRAN_KEY_B64:-}"
+  FIVETRAN_GROUP_ID_VAL="${FIVETRAN_GROUP_ID:-}"
 
-  echo "  Reading 1P item (vault: ${OP_VAULT_ID}, item: ${OP_ITEM_ID})..."
-
-  SNOWFLAKE_ACCOUNT_VAL=$(op_read "snowflake_account")
-  SNOWFLAKE_WAREHOUSE_VAL=$(op_read "snowflake_warehouse")
-  SHARED_LAB_PASSWORD=$(op_read "password")
-
-  SNOWFLAKE_PAT_VAL=$(op_read "${LAB_SECTION}/snowflake_pat")
-  FIVETRAN_KEY_B64=$(op_read "${LAB_SECTION}/fivetran_key_b64")
-  FIVETRAN_GROUP_ID_VAL=$(op_read "${LAB_SECTION}/fivetran_group_id")
-
-  # PG source: hardcoded non-secret values, pg_password from 1P
-  PG_HOL_HOST_VAL="34.94.122.157"
-  PG_HOL_PORT_VAL="5432"
-  PG_HOL_DATABASE_VAL="industry-se-demo"
-  PG_HOL_USER_VAL="fivetran"
-  PG_HOL_PASSWORD_VAL=$(op_read "G1 POSTGRESQL DATA SOURCE/pg_password")
+  # PG source — shared across all 7 labusers; hardcoded non-secret values,
+  # pg_password comes from the .env file.
+  PG_HOL_HOST_VAL="${PG_HOL_HOST:-34.94.122.157}"
+  PG_HOL_PORT_VAL="${PG_HOL_PORT:-5432}"
+  PG_HOL_DATABASE_VAL="${PG_HOL_DATABASE:-industry-se-demo}"
+  PG_HOL_USER_VAL="${PG_HOL_USER:-fivetran}"
+  PG_HOL_PASSWORD_VAL="${PG_HOL_PASSWORD:-}"
 
   # Validate required fields
   for var in SNOWFLAKE_ACCOUNT_VAL SNOWFLAKE_WAREHOUSE_VAL SNOWFLAKE_PAT_VAL FIVETRAN_KEY_B64 FIVETRAN_GROUP_ID_VAL; do
     if [ -z "${!var}" ]; then
-      error "Missing 1P value: $var (check op:// path resolves in the $LAB_SECTION section)"
+      error "Missing value in $CRED_FILE: ${var%_VAL} (strip _VAL suffix for the env name)"
       pause_and_exit
     fi
   done
@@ -547,7 +540,7 @@ if [ "$LAB_MODE" = "1" ]; then
   FIVETRAN_API_KEY_VAL="${DECODED_FT%%:*}"
   FIVETRAN_API_SECRET_VAL="${DECODED_FT##*:}"
   if [ -z "$FIVETRAN_API_KEY_VAL" ] || [ -z "$FIVETRAN_API_SECRET_VAL" ]; then
-    error "Failed to decode fivetran_key_b64 from 1P"
+    error "Failed to decode FIVETRAN_KEY_B64 from $CRED_FILE"
     pause_and_exit
   fi
 
