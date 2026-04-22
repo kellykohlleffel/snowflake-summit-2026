@@ -61,8 +61,14 @@ class ActivationClient:
         query: str,
         limit: int = 10,
         activation_api_url: Optional[str] = None,
+        laptop_id: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Query Snowflake and push results to the activation app."""
+        """Query Snowflake and push results to the activation app.
+
+        When laptop_id is provided (lab laptops set LAPTOP_ID env var), data is
+        namespaced per-laptop via /activate/{industry}/{laptop_id}. When absent,
+        falls back to /activate/{industry} for Kelly's dev flow.
+        """
         if industry.lower() not in VALID_INDUSTRIES:
             return {
                 "success": False,
@@ -99,9 +105,17 @@ class ActivationClient:
         }
         title = title_map.get(industry.lower(), f"{industry.title()} Insights")
 
-        # Push to activation API
+        # Resolve laptop_id — arg > env var > None (dev flow default)
+        effective_laptop_id = laptop_id or os.getenv("LAPTOP_ID") or None
+
+        # Push to activation API — route to per-laptop URL when laptop_id set
         api_base = activation_api_url or self.api_url
-        url = f"{api_base}/activate/{industry.lower()}"
+        if effective_laptop_id:
+            url = f"{api_base}/activate/{industry.lower()}/{effective_laptop_id}"
+            app_url_with_scope = f"{self.app_url}?laptop_id={effective_laptop_id}"
+        else:
+            url = f"{api_base}/activate/{industry.lower()}"
+            app_url_with_scope = self.app_url
         payload = {
             "title": title,
             "source": "Fivetran \u2192 Snowflake \u2192 dbt \u2192 Activation",
@@ -124,11 +138,12 @@ class ActivationClient:
             "success": True,
             "records_pushed": resp_data.get("records_count", len(records)),
             "industry": industry.lower(),
+            "laptop_id": effective_laptop_id,
             "activated_at": resp_data.get("activated_at", datetime.utcnow().isoformat()),
-            "app_url": self.app_url,
+            "app_url": app_url_with_scope,
             "message": (
                 f"{len(records)} records pushed to {industry.lower()} tab. "
-                f"Open the app: {self.app_url}"
+                f"Open the app: {app_url_with_scope}"
             ),
         }
 
@@ -136,12 +151,21 @@ class ActivationClient:
         self,
         industry: str = "all",
         activation_api_url: Optional[str] = None,
+        laptop_id: Optional[str] = None,
     ) -> dict[str, Any]:
-        """Clear data from the activation app."""
+        """Clear data from the activation app.
+
+        When laptop_id is provided, resets only that laptop's scope via
+        /reset/{industry}/{laptop_id}. When absent, resets the shared industry
+        doc (dev flow) or all docs (/reset-all).
+        """
         api_base = activation_api_url or self.api_url
+        effective_laptop_id = laptop_id or os.getenv("LAPTOP_ID") or None
 
         if industry.lower() == "all":
             url = f"{api_base}/reset-all"
+        elif effective_laptop_id:
+            url = f"{api_base}/reset/{industry.lower()}/{effective_laptop_id}"
         else:
             url = f"{api_base}/reset/{industry.lower()}"
 
