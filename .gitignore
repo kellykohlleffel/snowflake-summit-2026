@@ -10,6 +10,9 @@ dist/
 # Credentials (never commit)
 .env
 !.env.example
+# Per-laptop credential files — only *.env files in setup/creds are ignored,
+# so README.md and .gitkeep remain tracked to preserve the directory.
+setup/creds/*.env
 
 # OS
 .DS_Store
