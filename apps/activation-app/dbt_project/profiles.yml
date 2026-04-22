@@ -1,6 +1,11 @@
 fivetran_se_ai_solution_demo:
+  # Default target is `dev` (Kelly's working configuration — unchanged).
+  # Lab laptops set DBT_PROFILE_TARGET=lab (via setup.sh) to use the `lab` target.
   target: dev
   outputs:
+    # `dev` — Kelly's original dev environment. Uses RSA key-pair auth against his
+    # personal Snowflake account. Everything hardcoded matches the prior state;
+    # if env vars are unset, everything falls back to the same defaults.
     dev:
       type: snowflake
       account: a3209653506471-sales-eng-hands-on-lab
@@ -9,5 +14,22 @@ fivetran_se_ai_solution_demo:
       role: ACCOUNTADMIN
       warehouse: HANDS_ON_LAB_WAREHOUSE
       database: HOL_DATABASE_1
+      schema: pharma
+      threads: 4
+
+    # `lab` — used by the 7 dedicated booth lab laptops (and Kelly's laptop during
+    # Phase 2 testing as labuser 7). Uses PAT (password) auth against the
+    # aa67604.us-central1.gcp lab account. Per-laptop values come from 1Password
+    # via setup.sh env injection. All SNOWFLAKE_* env vars are required when
+    # DBT_PROFILE_TARGET=lab; there are no fallbacks here because dbt should fail
+    # loudly if credentials are missing in the lab scenario.
+    lab:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PAT') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
       schema: pharma
       threads: 4
