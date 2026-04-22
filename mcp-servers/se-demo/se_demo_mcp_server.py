@@ -248,6 +248,7 @@ async def activate_to_app(
     query: str,
     limit: int = 10,
     activation_api_url: Optional[str] = None,
+    laptop_id: Optional[str] = None,
 ) -> str:
     """Push insights from a Snowflake dbt view to the React activation app.
 
@@ -262,6 +263,9 @@ async def activate_to_app(
         query: SQL query to execute (use this for custom queries with filters/ordering)
         limit: Max records to push (default 10)
         activation_api_url: Override the default activation API URL
+        laptop_id: Per-laptop namespace for lab use (e.g., "laptop3"). If unset,
+            reads LAPTOP_ID env var. If both unset, falls back to shared dev-flow
+            endpoint /activate/{industry}.
     """
     result = await activation.activate(
         industry=industry,
@@ -271,6 +275,7 @@ async def activate_to_app(
         query=query,
         limit=limit,
         activation_api_url=activation_api_url,
+        laptop_id=laptop_id,
     )
     return json.dumps(result)
 
@@ -279,6 +284,7 @@ async def activate_to_app(
 async def reset_activation_app(
     industry: str = "all",
     activation_api_url: Optional[str] = None,
+    laptop_id: Optional[str] = None,
 ) -> str:
     """Reset the activation app — clear data from industry tabs.
 
@@ -287,10 +293,13 @@ async def reset_activation_app(
     Args:
         industry: Which tab to reset. Use "all" to reset all tabs.
         activation_api_url: Override the default activation API URL
+        laptop_id: If set (lab mode), resets only this laptop's scope. If unset,
+            reads LAPTOP_ID env; otherwise resets the shared industry doc.
     """
     result = await activation.reset(
         industry=industry,
         activation_api_url=activation_api_url,
+        laptop_id=laptop_id,
     )
     return json.dumps(result)
 
@@ -376,7 +385,7 @@ def _delete_fivetran_connection(connection_id: str) -> dict:
 async def cleanup_demo(
     schema_prefix: str,
     industry: str,
-    database: str = "HOL_DATABASE_1",
+    database: Optional[str] = None,
     confirmed: bool = False,
 ) -> str:
     """Clean up all demo artifacts: Fivetran connector, Snowflake schemas/agents, activation app.
@@ -387,9 +396,13 @@ async def cleanup_demo(
     Args:
         schema_prefix: The schema prefix used in the demo (e.g., "hed_fivetran_code_100")
         industry: Industry key (pharma, retail, hed, financial, agriculture, healthcare)
-        database: Snowflake database (default: HOL_DATABASE_1)
+        database: Snowflake database. If unset, reads SNOWFLAKE_DATABASE env var;
+            falls back to HOL_DATABASE_1 (Kelly's dev default) if that's also unset.
         confirmed: False=preview, True=execute
     """
+    # Resolve database: arg > env > dev-flow default
+    if not database:
+        database = os.getenv("SNOWFLAKE_DATABASE", "HOL_DATABASE_1")
     industry_lower = industry.lower()
     source_suffix = INDUSTRY_SOURCE_SCHEMAS.get(industry_lower)
     if not source_suffix:
