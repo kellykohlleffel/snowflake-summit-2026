@@ -106,6 +106,29 @@ These defaults are used unless the user overrides them:
   - `healthcare.cds_records` (750 rows)
   - `supply_chain.spl_records` (750 rows)
 
+### Environment Detection (for booth lab laptops)
+
+The defaults above reflect Kelly's dev Snowflake account. When this skill runs
+on a dedicated lab laptop (Snowflake Summit / BDL booth), the per-laptop values
+come from env vars set by `setup.sh`:
+
+- `LABUSER_NUM` (1–7) — which lab user this laptop is. If set, you're on a
+  booth lab laptop.
+- `SNOWFLAKE_DATABASE` — e.g., `SF_LABUSER3_DB`. Overrides the `HOL_DATABASE_1`
+  default in the readiness summary and downstream calls.
+- `FIVETRAN_GROUP_ID` — e.g., `really_woof`. Overrides the default
+  `verbatim_suite` group for connector creation.
+- `LAPTOP_ID` — e.g., `laptop3`. Used by `activate_to_app` / `reset_activation_app`
+  to namespace per-laptop data in the activation React app.
+- `HOL_INSTRUCTOR` — `"true"` only on labuser-7 laptop. Controls whether
+  Step 8 cleanup is offered.
+
+If `LABUSER_NUM` is set, tell the user in Step 1 that you're running as
+lab user `$LABUSER_NUM` against `$SNOWFLAKE_DATABASE`. The MCP tools read
+these env vars automatically — you just need to phrase the narrative
+accurately (e.g., "I'll create the connector in your lab destination
+`$FIVETRAN_GROUP_ID`").
+
 ---
 
 ## Step 1: Prerequisites Check (2 min)
@@ -595,6 +618,53 @@ Show:
 ```
 
 **NOTE:** The actual session elapsed time is appended automatically by Fivetran Code after this block — do NOT include a "Total time" line manually.
+
+---
+
+## Step 8: Cleanup (Instructor Only)
+
+**DO NOT auto-prompt cleanup at the end of Step 7.** Attendees end the lab with
+the "SOLUTION COMPLETE" block and nothing further.
+
+Cleanup is **only** triggered when the user explicitly says "cleanup" or "reset",
+AND only on the instructor laptop (where `HOL_INSTRUCTOR=true` is set in env).
+
+### Attendee laptops (HOL_INSTRUCTOR ≠ "true")
+
+If an attendee types "cleanup" (or similar) on a non-instructor laptop, respond:
+
+> "Lab complete! Cleanup is handled by the instructor between sessions — you're
+> all set. Thanks for running through the lab."
+
+Do NOT call `cleanup_demo`. Do NOT drop anything. The instructor will reset
+this laptop's state via `instructor-reset-all-labs.sh` between booth sessions.
+
+### Instructor laptop (HOL_INSTRUCTOR == "true")
+
+If the instructor types "cleanup" on the instructor laptop, proceed with the
+two-call preview-then-execute flow using `mcp__se-demo__cleanup_demo`:
+
+1. **Preview call** — `confirmed=false`:
+   - `schema_prefix`: the prefix used in this session (from Step 1.3)
+   - `industry`: the industry used in this session
+   - `database`: auto-resolved from `SNOWFLAKE_DATABASE` env var
+   - `confirmed`: `false`
+
+   Show the preview output (what will be dropped/deleted).
+
+2. **Confirmation prompt**:
+
+   > "Ready to execute cleanup for `$schema_prefix` / `$industry`? (yes/no)"
+
+3. **Execute call** — `confirmed=true` — only after explicit "yes":
+   - Same args with `confirmed: true`
+
+4. Report results with per-tier ✓/✗ markers.
+
+For cross-laptop reset (all 7 labusers in one go), the instructor runs
+`./instructor-reset-all-labs.sh --confirm` from a terminal instead — that
+script iterates all 7 destinations using each labuser's scoped credentials
+loaded from 1Password at runtime.
 
 ---
 

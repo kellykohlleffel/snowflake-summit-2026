@@ -71,7 +71,7 @@ Fill in lines 2-4 and 8 (Snowflake credentials and database) plus lines 16-18 (F
 1. Reload VSCode: `Cmd+Shift+P` > "Developer: Reload Window"
 2. Click the Snowflake icon in the activity bar
 3. Type: `list my groups` (verifies Fivetran MCP server)
-4. Type: `/fivetran-snowflake-hol-sfsummit2026` (runs the HOL)
+4. Type: `/fivetran-snowflake-hol-sfsummit2026-v2` (runs the HOL)
 
 ## Lab Laptop Prep
 

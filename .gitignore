@@ -14,5 +14,8 @@ dist/
 # OS
 .DS_Store
 
+# Screenshots
+screenshots/
+
 # Firebase
 .firebase/
