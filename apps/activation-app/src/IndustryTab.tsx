@@ -95,13 +95,30 @@ function timeAgo(isoString: string): string {
 
 type SortState = { key: string; dir: "asc" | "desc" } | null;
 
+/** Read optional ?laptop_id=X from the current URL. Used for per-laptop
+ *  scoping during booth labs so 7 attendees on the same industry don't see
+ *  each other's data. When absent, we subscribe to the bare industry doc
+ *  (Kelly's dev flow). Allowed chars match the backend validator. */
+function getLaptopId(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("laptop_id");
+  if (!raw) return null;
+  if (raw.length > 64) return null;
+  if (!/^[A-Za-z0-9_-]+$/.test(raw)) return null;
+  return raw;
+}
+
 export default function IndustryTab({ industry, darkMode }: Props) {
   const [data, setData] = useState<ActivationData | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [sort, setSort] = useState<SortState>(null);
+  const laptopId = getLaptopId();
 
   useEffect(() => {
-    const docRef = doc(db, "industries", industry.id);
+    // Per-laptop doc id when ?laptop_id=X is present (booth lab mode);
+    // bare industry id otherwise (Kelly's dev flow — unchanged).
+    const docId = laptopId ? `${industry.id}_${laptopId}` : industry.id;
+    const docRef = doc(db, "industries", docId);
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const d = snapshot.data() as ActivationData;
@@ -113,7 +130,7 @@ export default function IndustryTab({ industry, darkMode }: Props) {
       }
     });
     return () => unsubscribe();
-  }, [industry.id]);
+  }, [industry.id, laptopId]);
 
   // Update the "time ago" display every second
   const [, setTick] = useState(0);
@@ -159,12 +176,21 @@ export default function IndustryTab({ industry, darkMode }: Props) {
           </p>
         </div>
         <div className="text-right">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-end">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
             </span>
             <span className="text-sm text-green-500">Live</span>
+            {laptopId && (
+              <span className={`ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border ${
+                darkMode
+                  ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                  : "bg-blue-50 text-blue-700 border-blue-200"
+              }`}>
+                {laptopId}
+              </span>
+            )}
           </div>
           <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
             Activated {lastUpdate ? timeAgo(lastUpdate) : "—"}
