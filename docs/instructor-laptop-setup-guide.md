@@ -30,24 +30,25 @@ The repo is public — no auth needed for the clone.
 
 ## Step 1 — Get `labuser7.env` from 1Password
 
-Your labuser7 credentials are stored as a secure note in the shared 1Password vault.
+Your labuser7 credentials are an attachment on the shared 1Password vault item.
 
 **In the 1Password desktop app:**
-1. Navigate to the **"Snowflake Summit and BDL 2026 Lab Users"** vault item
-2. Find the secure note titled **"labuser7.env (instructor laptop credentials)"**
-3. Copy the full note content to your clipboard
+1. Search for the item **"Snowflake Summit and BDL 2026 Lab Users"** (or find it in the shared Fivetran vault you have access to).
+2. Scroll to the **"Lab User 7 (instructor)"** section. You'll see:
+   - A text block titled `labuser7.env — Summit 2026 HOL instructor credentials` explaining what to do
+   - A file attachment labeled **`labuser7.env`** (blue file icon)
+3. **Right-click the attachment → Download** (or drag it to Finder).
 
 **On your laptop** (from inside the repo directory):
 ```bash
-mkdir -p setup/creds
-pbpaste > setup/creds/labuser7.env
+mv ~/Downloads/labuser7.env setup/creds/labuser7.env
 chmod 600 setup/creds/labuser7.env
 head -3 setup/creds/labuser7.env
 ```
 
-Expected: the file starts with `# Labuser 7 credentials — generated ...` (or similar comment header).
+Expected: the file starts with `# Labuser 7 credentials — generated ...` (comment header).
 
-If you'd rather not use `pbpaste`, open `setup/creds/labuser7.env` in any editor and paste the content manually, then save.
+If your browser downloaded the file somewhere other than `~/Downloads/` (or if you dragged it directly to a different folder), adjust the `mv` source path accordingly.
 
 ---
 
