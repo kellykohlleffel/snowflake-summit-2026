@@ -631,7 +631,12 @@ CONFIG_FILE="$CONFIG_DIR/config.json"
 
 mkdir -p "$CONFIG_DIR"
 
-if [ ! -f "$CONFIG_FILE" ]; then
+# Only seed YOUR_ placeholders in dev mode. In lab mode (LABUSER_NUM set),
+# Step 10's safe-merge creates the file fresh from labuser{N}.env with real
+# values -- seeding placeholders first would leave stale YOUR_ strings for
+# fields Step 10 doesn't set (e.g., anthropicApiKey), which then trips the
+# EOF "fill in credentials" check even though everything actually works.
+if [ "$LAB_MODE" = "0" ] && [ ! -f "$CONFIG_FILE" ]; then
   cat > "$CONFIG_FILE" << 'CONFIGEOF'
 {
   "fivetranApiKey": "YOUR_FIVETRAN_API_KEY",
@@ -643,8 +648,10 @@ if [ ! -f "$CONFIG_FILE" ]; then
 CONFIGEOF
   chmod 600 "$CONFIG_FILE"
   warn "Config created at $CONFIG_FILE -- fill in your credentials"
-else
+elif [ -f "$CONFIG_FILE" ]; then
   info "Config file already exists at $CONFIG_FILE"
+else
+  info "Lab mode: config will be created by Step 10 from labuser${LABUSER_NUM}.env"
 fi
 
 # --- ~/.snowflake/connections.toml ---
@@ -653,7 +660,10 @@ SF_CONN="$SF_DIR/connections.toml"
 
 mkdir -p "$SF_DIR"
 
-if [ ! -f "$SF_CONN" ]; then
+# Same pattern: seed placeholder TOML only in dev mode. Lab-mode Step 10
+# writes the real [summit-lab] section via safe-merge (and preserves any
+# pre-existing sections on instructor laptops).
+if [ "$LAB_MODE" = "0" ] && [ ! -f "$SF_CONN" ]; then
   cat > "$SF_CONN" << 'SFEOF'
 default_connection_name = "summit-hol"
 
@@ -666,8 +676,10 @@ database = "YOUR_SNOWFLAKE_DATABASE"
 SFEOF
   chmod 600 "$SF_CONN"
   warn "Snowflake config created at $SF_CONN -- fill in your credentials"
-else
+elif [ -f "$SF_CONN" ]; then
   info "Snowflake connections.toml already exists at $SF_CONN"
+else
+  info "Lab mode: connections.toml will be created by Step 10 from labuser${LABUSER_NUM}.env"
 fi
 
 # -------------------------------------------
@@ -1018,43 +1030,49 @@ info "HOL skill installed to ~/.claude/skills/"
 info "Cortex MCP config written to ~/.snowflake/cortex/mcp.json"
 echo ""
 
-# Check for placeholder credentials
+# Check for placeholder credentials -- ONLY in dev mode. Lab mode has already
+# populated config via Step 10's safe-merge from labuser{N}.env, so any
+# leftover YOUR_ strings are in fields the lab flow doesn't need (e.g.,
+# anthropicApiKey -- token-counter cosmetic). verify.sh is authoritative
+# for lab-mode readiness; no point second-guessing it here.
 NEEDS_CREDS=0
 
-if grep -q "YOUR_" "$CONFIG_FILE" 2>/dev/null; then
-  NEEDS_CREDS=1
-  warn "Fill in credentials:"
-  echo ""
-  echo "  File 1: ~/.fivetran-code/config.json"
-  echo "    - fivetranApiKey         (Fivetran Settings > API Key)"
-  echo "    - fivetranApiSecret"
-  echo "    - anthropicApiKey        (for token counting in footer)"
-  echo "    - snowflakeAccount       (e.g., a3209653506471-sales-eng-hands-on-lab)"
-  echo "    - snowflakePatToken"
-  echo ""
-fi
+if [ "$LAB_MODE" = "0" ]; then
+  if grep -q "YOUR_" "$CONFIG_FILE" 2>/dev/null; then
+    NEEDS_CREDS=1
+    warn "Fill in credentials:"
+    echo ""
+    echo "  File 1: ~/.fivetran-code/config.json"
+    echo "    - fivetranApiKey         (Fivetran Settings > API Key)"
+    echo "    - fivetranApiSecret"
+    echo "    - anthropicApiKey        (for token counting in footer)"
+    echo "    - snowflakeAccount       (e.g., a3209653506471-sales-eng-hands-on-lab)"
+    echo "    - snowflakePatToken"
+    echo ""
+  fi
 
-if grep -q "YOUR_" "$SF_CONN" 2>/dev/null; then
-  NEEDS_CREDS=1
-  echo "  File 2: ~/.snowflake/connections.toml"
-  echo "    - account                (same Snowflake account locator)"
-  echo "    - user                   (e.g., hol_lab_user3)"
-  echo "    - password               (PAT token for this user)"
-  echo "    - database               (e.g., HOL_DATABASE_3)"
-  echo ""
-fi
+  if grep -q "YOUR_" "$SF_CONN" 2>/dev/null; then
+    NEEDS_CREDS=1
+    echo "  File 2: ~/.snowflake/connections.toml"
+    echo "    - account                (same Snowflake account locator)"
+    echo "    - user                   (e.g., hol_lab_user3)"
+    echo "    - password               (PAT token for this user)"
+    echo "    - database               (e.g., HOL_DATABASE_3)"
+    echo ""
+  fi
 
-if [ -f "$TOOLKIT_DIR/mcp-servers/se-demo/.env" ] && grep -q "your_" "$TOOLKIT_DIR/mcp-servers/se-demo/.env" 2>/dev/null; then
-  NEEDS_CREDS=1
-  echo "  File 3: mcp-servers/se-demo/.env"
-  echo "    - SNOWFLAKE_ACCOUNT"
-  echo "    - SNOWFLAKE_USER"
-  echo "    - SNOWFLAKE_PASSWORD"
-  echo "    - SNOWFLAKE_DATABASE"
-  echo "    - FIVETRAN_API_KEY"
-  echo "    - FIVETRAN_API_SECRET"
-  echo "    - FIVETRAN_GROUP_ID"
-  echo ""
+  if [ -f "$TOOLKIT_DIR/mcp-servers/se-demo/.env" ] && grep -q "your_" "$TOOLKIT_DIR/mcp-servers/se-demo/.env" 2>/dev/null; then
+    NEEDS_CREDS=1
+    echo "  File 3: mcp-servers/se-demo/.env"
+    echo "    - SNOWFLAKE_ACCOUNT"
+    echo "    - SNOWFLAKE_USER"
+    echo "    - SNOWFLAKE_PASSWORD"
+    echo "    - SNOWFLAKE_DATABASE"
+    echo "    - FIVETRAN_API_KEY"
+    echo "    - FIVETRAN_API_SECRET"
+    echo "    - FIVETRAN_GROUP_ID"
+    echo ""
+  fi
 fi
 
 echo "Next steps:"
