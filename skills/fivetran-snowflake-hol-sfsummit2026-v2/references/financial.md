@@ -1,7 +1,7 @@
 # Financial Services — Transaction Monitoring & Churn Prevention
 
 ## Source
-- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: REDACTED_PG_PASSWORD
+- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: <read PG_HOL_PASSWORD from mcp-servers/se-demo/.env>
 - connection_type: google_cloud_postgresql, update_method: TELEPORT
 - Schema: `financial_services`, Table: `fpr_records` (751 rows, 28 columns, ~1-2 min sync)
 

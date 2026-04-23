@@ -1,7 +1,7 @@
 # Pharma — Clinical Trials Risk Analysis
 
 ## Source
-- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: REDACTED_PG_PASSWORD
+- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: <read PG_HOL_PASSWORD from mcp-servers/se-demo/.env>
 - connection_type: google_cloud_postgresql, update_method: TELEPORT
 - Schema: `pharma`, Table: `phr_records` (750 rows, 17 columns, ~1-2 min sync)
 
