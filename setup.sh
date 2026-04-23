@@ -227,15 +227,17 @@ ensure_cortex_cli() {
     return 0
   fi
   warn "Cortex Code CLI not found -- installing via official Snowflake script..."
-  if ! curl -LsS "https://ai.snowflake.com/static/cc-scripts/install.sh" | sh; then
-    error "Cortex Code CLI install script failed"
-    track_prereq "Cortex Code CLI" "FAILED" "install script failed"
-    return 1
-  fi
+  warn "The installer will ask about Podman (container runtime for sandbox features)."
+  warn "Answer N -- the HOL flow does not need Podman."
+  # Note: the Snowflake install script exits non-zero when Podman is skipped,
+  # but the Cortex CLI binary is still installed correctly. We check for the
+  # binary itself rather than trusting the script's exit code.
+  curl -LsS "https://ai.snowflake.com/static/cc-scripts/install.sh" | sh || true
   export PATH="$HOME/.local/bin:$PATH"
   hash -r 2>/dev/null || true
   if ! command -v cortex >/dev/null 2>&1; then
-    error "Cortex Code CLI installed but 'cortex' not on PATH (expected at ~/.local/bin/cortex)"
+    error "Cortex Code CLI install failed -- 'cortex' binary not found on PATH"
+    error "(looked in PATH and at $HOME/.local/bin/cortex)"
     track_prereq "Cortex Code CLI" "FAILED" "binary not found after install"
     return 1
   fi
@@ -438,16 +440,18 @@ if [ "$DRY_RUN" = "1" ]; then
     warn "[DRY RUN] Would prompt user to run: gh auth login && gh auth setup-git"
   fi
 elif ! gh auth status &> /dev/null; then
-  warn "Not logged in to GitHub. Run these two commands, then re-run setup.sh:"
+  warn "Not logged in to GitHub -- launching 'gh auth login' now."
+  echo "      Choose: GitHub.com -> HTTPS -> Login with a web browser"
+  echo "      Follow the browser prompts, then return to this terminal."
   echo ""
-  echo "      gh auth login"
-  echo "        -> Choose: GitHub.com, HTTPS, Login with a web browser"
-  echo "        -> Follow the browser prompts"
-  echo ""
-  echo "      gh auth setup-git"
-  echo "        -> Lets git use your GitHub credentials"
-  echo ""
-  pause_and_exit
+  if gh auth login; then
+    GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
+    info "GitHub authenticated as $GH_USER"
+    gh auth setup-git 2>/dev/null || true
+  else
+    error "gh auth login failed or was cancelled"
+    pause_and_exit
+  fi
 else
   GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
   info "GitHub authenticated as $GH_USER"
