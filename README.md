@@ -49,15 +49,18 @@ Each attendee picks an industry. All share the same PostgreSQL source, same Five
 
 ## Setup
 
-Prerequisites: Node.js 18+, Python 3.12+, VSCode, Cortex Code CLI, GitHub CLI.
+Prerequisites are auto-installed if missing (Node 20 LTS, Python 3.12, VSCode, Cortex Code CLI, GitHub CLI — all via native Apple-signed installers; no Homebrew).
 
 ```bash
 git clone https://github.com/kellykohlleffel/snowflake-summit-2026.git
 cd snowflake-summit-2026
-./setup.sh
+
+./setup.sh              # Dev flow (placeholder creds)
+./setup.sh <1-7>        # Lab-laptop mode (reads setup/creds/labuser{N}.env)
+./setup.sh <1-7> --dry-run   # Preview what would install; zero state changes
 ```
 
-The script handles everything -- checks prerequisites, builds extensions, installs MCP servers, creates config templates. Re-runnable. See [QUICKSTART.md](QUICKSTART.md) for the full walkthrough.
+The script checks prerequisites (auto-installs anything missing), builds extensions, installs MCP servers, creates config templates, and runs `verify.sh` on lab-laptop runs. Re-runnable. See [QUICKSTART.md](QUICKSTART.md) for the full walkthrough.
 
 ## Architecture
 

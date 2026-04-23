@@ -18,18 +18,38 @@ set -e
 
 TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# --- Parse LABUSER_NUM arg (optional) ---
-LABUSER_NUM="${1:-}"
+# Ensure ~/.local/bin is on PATH for this shell -- the Cortex Code CLI installer
+# and our VSCode `code` symlink write there; without this, subsequent steps in
+# this same script wouldn't find the newly-installed binaries.
+export PATH="$HOME/.local/bin:$PATH"
+
+# --- Parse args (LABUSER_NUM positional + optional --dry-run flag) ---
+LABUSER_NUM=""
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    [1-7])     LABUSER_NUM="$arg" ;;
+    *)
+      echo "Error: Unknown argument '$arg'" >&2
+      echo "Usage: ./setup.sh [1-7] [--dry-run]" >&2
+      echo "  [1-7]      Lab-laptop mode, uses setup/creds/labuser{N}.env" >&2
+      echo "  --dry-run  Preview prereq installs without executing (no state changes)" >&2
+      exit 1
+      ;;
+  esac
+done
+
 if [ -n "$LABUSER_NUM" ]; then
-  if ! [[ "$LABUSER_NUM" =~ ^[1-7]$ ]]; then
-    echo "Error: LABUSER_NUM must be 1-7 (got '$LABUSER_NUM')" >&2
-    echo "Usage: ./setup.sh [1-7]  (no arg = dev flow)" >&2
-    exit 1
-  fi
   LAB_MODE=1
-  echo "[setup.sh] Running in LAB MODE as labuser ${LABUSER_NUM}"
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "[setup.sh] Running in LAB MODE as labuser ${LABUSER_NUM} (DRY RUN -- no state changes)"
+  else
+    echo "[setup.sh] Running in LAB MODE as labuser ${LABUSER_NUM}"
+  fi
 else
   LAB_MODE=0
+  [ "$DRY_RUN" = "1" ] && echo "[setup.sh] Running in DRY RUN mode -- no state changes"
 fi
 
 # Per-laptop credential file location. Lab mode expects this file to exist on
@@ -52,6 +72,309 @@ pause_and_exit() {
   echo -e "${YELLOW}Fix the above and re-run:${NC}  ./setup.sh"
   echo ""
   exit 1
+}
+
+# -------------------------------------------
+# Prerequisites status tracking + install helpers
+# -------------------------------------------
+# PREREQ_STATUS holds pipe-delimited entries: "DisplayName|STATUS|detail"
+# Status values: READY (already installed), INSTALLED (we just installed it),
+# DRY_RUN (would install in real run), FAILED (error — blocks setup).
+PREREQ_STATUS=()
+
+track_prereq() {
+  PREREQ_STATUS+=("$1|$2|$3")
+}
+
+# install_pkg_if_missing <check_cmd> <pkg_url> <display_name>
+# Generic helper for Apple-signed .pkg installers (Node, Python, gh).
+install_pkg_if_missing() {
+  local check_cmd="$1" pkg_url="$2" display_name="$3"
+  if command -v "$check_cmd" >/dev/null 2>&1; then
+    local ver
+    ver=$("$check_cmd" --version 2>&1 | head -1)
+    track_prereq "$display_name" "READY" "$ver"
+    info "$display_name: $ver"
+    return 0
+  fi
+  if [ "$DRY_RUN" = "1" ]; then
+    warn "$display_name not found"
+    echo "      [DRY RUN] Would download:  curl -fsSL -o /tmp/summit-hol-${display_name}.pkg $pkg_url"
+    echo "      [DRY RUN] Would install:   sudo installer -pkg /tmp/summit-hol-${display_name}.pkg -target /"
+    track_prereq "$display_name" "DRY_RUN" "would install from $pkg_url"
+    return 0
+  fi
+  warn "$display_name not found -- downloading..."
+  local tmp="/tmp/summit-hol-${display_name}.pkg"
+  if ! curl -fsSL -o "$tmp" "$pkg_url"; then
+    error "$display_name: download failed from $pkg_url"
+    track_prereq "$display_name" "FAILED" "download failed"
+    return 1
+  fi
+  if ! file "$tmp" | grep -q "xar archive"; then
+    error "$display_name: downloaded file is not a valid .pkg"
+    rm -f "$tmp"
+    track_prereq "$display_name" "FAILED" "invalid .pkg"
+    return 1
+  fi
+  echo "      Installing $display_name (requires your password)..."
+  if ! sudo installer -pkg "$tmp" -target /; then
+    error "$display_name: installer failed"
+    rm -f "$tmp"
+    track_prereq "$display_name" "FAILED" "installer error"
+    return 1
+  fi
+  rm -f "$tmp"
+  # Re-export PATH in case installer added to /usr/local/bin that wasn't in PATH
+  hash -r 2>/dev/null || true
+  local ver
+  ver=$("$check_cmd" --version 2>&1 | head -1)
+  info "$display_name installed: $ver"
+  track_prereq "$display_name" "INSTALLED" "$ver"
+}
+
+# VSCode ships as a .zip, not a .pkg -- dedicated helper.
+# Symlinks the bundled `code` CLI binary to ~/.local/bin/code to avoid the
+# GUI-only "Cmd+Shift+P -> Install code command in PATH" step.
+ensure_vscode() {
+  if command -v code >/dev/null 2>&1; then
+    local ver
+    ver=$(code --version 2>/dev/null | head -1)
+    track_prereq "VS Code" "READY" "$ver"
+    info "VS Code: $ver"
+    return 0
+  fi
+  local vscode_zip_url="https://update.code.visualstudio.com/latest/darwin-universal/stable"
+  if [ "$DRY_RUN" = "1" ]; then
+    warn "VS Code not found"
+    echo "      [DRY RUN] Would download:  curl -fsSL -o /tmp/summit-hol-vscode.zip $vscode_zip_url"
+    echo "      [DRY RUN] Would unzip to:  /tmp/summit-hol-vscode/"
+    echo "      [DRY RUN] Would install:   sudo cp -R '/tmp/summit-hol-vscode/Visual Studio Code.app' /Applications/"
+    echo "      [DRY RUN] Would symlink:   /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code -> ~/.local/bin/code"
+    track_prereq "VS Code" "DRY_RUN" "would download ~130MB .zip + symlink code CLI"
+    return 0
+  fi
+  warn "VS Code not found -- downloading (~130MB)..."
+  local tmp_zip="/tmp/summit-hol-vscode.zip"
+  local tmp_dir="/tmp/summit-hol-vscode"
+  rm -rf "$tmp_dir" "$tmp_zip"
+  if ! curl -fsSL -o "$tmp_zip" "$vscode_zip_url"; then
+    error "VS Code: download failed"
+    track_prereq "VS Code" "FAILED" "download failed"
+    return 1
+  fi
+  mkdir -p "$tmp_dir"
+  if ! unzip -q "$tmp_zip" -d "$tmp_dir"; then
+    error "VS Code: unzip failed (archive may be corrupt)"
+    rm -rf "$tmp_dir" "$tmp_zip"
+    track_prereq "VS Code" "FAILED" "unzip failed"
+    return 1
+  fi
+  if [ ! -d "$tmp_dir/Visual Studio Code.app" ]; then
+    error "VS Code: extracted archive does not contain 'Visual Studio Code.app'"
+    rm -rf "$tmp_dir" "$tmp_zip"
+    track_prereq "VS Code" "FAILED" "missing .app bundle"
+    return 1
+  fi
+  echo "      Installing VS Code to /Applications (requires your password)..."
+  if ! sudo cp -R "$tmp_dir/Visual Studio Code.app" /Applications/; then
+    error "VS Code: copy to /Applications failed"
+    rm -rf "$tmp_dir" "$tmp_zip"
+    track_prereq "VS Code" "FAILED" "copy to /Applications failed"
+    return 1
+  fi
+  rm -rf "$tmp_dir" "$tmp_zip"
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "$HOME/.local/bin/code"
+  export PATH="$HOME/.local/bin:$PATH"
+  hash -r 2>/dev/null || true
+  if ! command -v code >/dev/null 2>&1; then
+    error "VS Code installed but 'code' symlink not working"
+    track_prereq "VS Code" "FAILED" "symlink not resolving"
+    return 1
+  fi
+  local ver
+  ver=$(code --version 2>/dev/null | head -1)
+  info "VS Code installed: $ver (symlinked code CLI)"
+  track_prereq "VS Code" "INSTALLED" "$ver (symlinked code CLI)"
+}
+
+# Cortex Code CLI uses Snowflake's official install script (curl | sh), not a .pkg.
+# Installs to ~/.local/bin/cortex and appends PATH to shell profile.
+# We do NOT invoke `cortex` bare after install -- that would launch the
+# interactive setup wizard, which is not wanted during automated setup.
+ensure_cortex_cli() {
+  local cortex_bin=""
+  if command -v cortex >/dev/null 2>&1; then
+    cortex_bin="$(command -v cortex)"
+  elif [ -x "$HOME/.local/bin/cortex" ]; then
+    cortex_bin="$HOME/.local/bin/cortex"
+    export PATH="$HOME/.local/bin:$PATH"
+  fi
+  if [ -n "$cortex_bin" ]; then
+    local ver
+    ver=$("$cortex_bin" --version 2>&1 | head -1)
+    track_prereq "Cortex Code CLI" "READY" "$ver (at $cortex_bin)"
+    info "Cortex Code CLI: $ver (at $cortex_bin)"
+    return 0
+  fi
+  if [ "$DRY_RUN" = "1" ]; then
+    warn "Cortex Code CLI not found"
+    echo "      [DRY RUN] Would run official Snowflake installer:"
+    echo "                curl -LsS https://ai.snowflake.com/static/cc-scripts/install.sh | sh"
+    echo "      [DRY RUN] Installer writes to ~/.local/bin/cortex and appends PATH to shell profile"
+    track_prereq "Cortex Code CLI" "DRY_RUN" "would install to ~/.local/bin/cortex"
+    return 0
+  fi
+  warn "Cortex Code CLI not found -- installing via official Snowflake script..."
+  if ! curl -LsS "https://ai.snowflake.com/static/cc-scripts/install.sh" | sh; then
+    error "Cortex Code CLI install script failed"
+    track_prereq "Cortex Code CLI" "FAILED" "install script failed"
+    return 1
+  fi
+  export PATH="$HOME/.local/bin:$PATH"
+  hash -r 2>/dev/null || true
+  if ! command -v cortex >/dev/null 2>&1; then
+    error "Cortex Code CLI installed but 'cortex' not on PATH (expected at ~/.local/bin/cortex)"
+    track_prereq "Cortex Code CLI" "FAILED" "binary not found after install"
+    return 1
+  fi
+  local ver
+  ver=$(cortex --version 2>&1 | head -1)
+  info "Cortex Code CLI installed: $ver"
+  track_prereq "Cortex Code CLI" "INSTALLED" "$ver"
+}
+
+# Wraps the existing gh install logic into the ensure_* pattern so it tracks
+# status alongside the others. Behavior unchanged from the original block.
+ensure_gh() {
+  if command -v gh >/dev/null 2>&1; then
+    local ver
+    ver=$(gh --version | head -1 | awk '{print $3}')
+    track_prereq "GitHub CLI" "READY" "v$ver"
+    info "GitHub CLI v$ver"
+    return 0
+  fi
+  local gh_version="2.67.0"
+  local gh_pkg_url="https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_macOS_universal.pkg"
+  if [ "$DRY_RUN" = "1" ]; then
+    warn "GitHub CLI not found"
+    echo "      [DRY RUN] Would download:  curl -fsSL -o /tmp/summit-hol-gh.pkg $gh_pkg_url"
+    echo "      [DRY RUN] Would install:   sudo installer -pkg /tmp/summit-hol-gh.pkg -target /"
+    track_prereq "GitHub CLI" "DRY_RUN" "would install v$gh_version"
+    return 0
+  fi
+  warn "GitHub CLI not found -- downloading v${gh_version}..."
+  local tmp="/tmp/summit-hol-gh.pkg"
+  if ! curl -fsSL -o "$tmp" "$gh_pkg_url"; then
+    error "GitHub CLI: download failed"
+    track_prereq "GitHub CLI" "FAILED" "download failed"
+    return 1
+  fi
+  if ! file "$tmp" | grep -q "xar archive"; then
+    error "GitHub CLI: downloaded file is not a valid .pkg"
+    rm -f "$tmp"
+    track_prereq "GitHub CLI" "FAILED" "invalid .pkg"
+    return 1
+  fi
+  echo "      Installing GitHub CLI (requires your password)..."
+  if ! sudo installer -pkg "$tmp" -target /; then
+    error "GitHub CLI: installer failed"
+    rm -f "$tmp"
+    track_prereq "GitHub CLI" "FAILED" "installer error"
+    return 1
+  fi
+  rm -f "$tmp"
+  hash -r 2>/dev/null || true
+  local ver
+  ver=$(gh --version | head -1 | awk '{print $3}')
+  info "GitHub CLI installed: v$ver"
+  track_prereq "GitHub CLI" "INSTALLED" "v$ver"
+}
+
+# Safe-merge VSCode user settings to disable auto-updates.
+# Uses Python setdefault -- only sets keys that are absent; never overwrites.
+# On instructor personal laptops (Class 2), settings.json typically exists with
+# custom themes/keybindings -- we must not clobber those. On bare lab laptops
+# (Class 3), settings.json doesn't exist yet and we create it with just the
+# auto-update keys.
+configure_vscode_auto_update() {
+  local settings_dir="$HOME/Library/Application Support/Code/User"
+  local settings_file="$settings_dir/settings.json"
+  if [ "$DRY_RUN" = "1" ]; then
+    if [ -f "$settings_file" ]; then
+      echo "      [DRY RUN] Would safe-merge auto-update keys into $settings_file"
+      echo "                (adds update.mode=none, extensions.autoUpdate=false only if absent)"
+    else
+      echo "      [DRY RUN] Would create $settings_file with auto-update keys"
+    fi
+    return 0
+  fi
+  mkdir -p "$settings_dir"
+  python3 - "$settings_file" <<'PYEOF'
+import json, os, sys
+path = sys.argv[1]
+existing = {}
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            existing = json.load(f)
+    except json.JSONDecodeError:
+        print(f"WARNING: {path} is not valid JSON -- leaving untouched")
+        sys.exit(0)
+changed = False
+for key, desired in [("update.mode", "none"), ("extensions.autoUpdate", False)]:
+    if key not in existing:
+        existing[key] = desired
+        changed = True
+    elif existing[key] != desired:
+        print(f"NOTE: {key} already set to {existing[key]!r} in {path} -- leaving as-is (respects existing preferences)")
+if changed:
+    with open(path, "w") as f:
+        json.dump(existing, f, indent=2)
+    print(f"[OK] Merged auto-update keys into {path}")
+else:
+    print(f"[OK] VS Code auto-update settings already configured")
+PYEOF
+}
+
+# Prints the final [READY / NEEDS ACTION] table and go/no-go verdict.
+# Matches the TVMAZE prerequisites-doc format adapted for bash.
+# Exits non-zero (via pause_and_exit) if anything is FAILED.
+print_prereq_summary() {
+  echo ""
+  echo "═══════════════════════════════════════════════════════════"
+  echo "  Prerequisites Status"
+  echo "═══════════════════════════════════════════════════════════"
+  local failed=()
+  local total=${#PREREQ_STATUS[@]}
+  local ready_count=0
+  for entry in "${PREREQ_STATUS[@]}"; do
+    local name="${entry%%|*}"
+    local rest="${entry#*|}"
+    local status="${rest%%|*}"
+    local detail="${rest#*|}"
+    printf "  %-20s [%-9s] %s\n" "$name:" "$status" "$detail"
+    if [ "$status" = "FAILED" ]; then
+      failed+=("$name")
+    else
+      ready_count=$((ready_count + 1))
+    fi
+  done
+  echo "═══════════════════════════════════════════════════════════"
+  if [ ${#failed[@]} -eq 0 ]; then
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "  Session is GO (dry run) -- ${ready_count}/${total} prerequisites accounted for."
+    else
+      echo "  Session is GO -- ${ready_count}/${total} prerequisites ready."
+    fi
+    echo "═══════════════════════════════════════════════════════════"
+    echo ""
+  else
+    echo "  BLOCKED on: ${failed[*]}"
+    echo "═══════════════════════════════════════════════════════════"
+    pause_and_exit
+  fi
 }
 
 echo ""
@@ -79,136 +402,42 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # -------------------------------------------
-# Step 1: Check core prerequisites
+# Step 1: Prerequisites walkthrough
 # -------------------------------------------
-step "1" "Checking prerequisites..."
+step "1" "Prerequisites walkthrough..."
 
-MISSING=0
+# Git comes with Xcode CLT (already verified in Step 0), so just report it.
+if command -v git >/dev/null 2>&1; then
+  GIT_VER=$(git --version | awk '{print $3}')
+  track_prereq "Git" "READY" "v$GIT_VER"
+  info "Git v$GIT_VER"
+else
+  error "Git not found even though Xcode CLT reported installed. Re-run: xcode-select --install"
+  track_prereq "Git" "FAILED" "missing after Xcode CLT check"
+fi
 
-# Git
-if ! command -v git &> /dev/null; then
-  error "Git not found."
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "      Run:  xcode-select --install"
+install_pkg_if_missing node         "https://nodejs.org/dist/v20.11.1/node-v20.11.1.pkg"                  "Node"
+install_pkg_if_missing python3.12   "https://www.python.org/ftp/python/3.12.2/python-3.12.2-macos11.pkg" "Python"
+ensure_vscode
+ensure_cortex_cli
+ensure_gh
+configure_vscode_auto_update
+
+print_prereq_summary
+
+# -------------------------------------------
+# Step 2: GitHub authentication
+# -------------------------------------------
+step "2" "Checking GitHub authentication..."
+
+if [ "$DRY_RUN" = "1" ]; then
+  if gh auth status &> /dev/null; then
+    GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
+    info "GitHub authenticated as $GH_USER"
   else
-    echo "      Install git for your platform: https://git-scm.com/downloads"
+    warn "[DRY RUN] Would prompt user to run: gh auth login && gh auth setup-git"
   fi
-  MISSING=1
-else
-  info "Git $(git --version | awk '{print $3}')"
-fi
-
-# Node.js
-if ! command -v node &> /dev/null; then
-  error "Node.js not found. Install from https://nodejs.org/ (v18+ required, download the LTS .pkg)"
-  MISSING=1
-else
-  NODE_VERSION=$(node --version | sed 's/v//' | cut -d. -f1)
-  if [ "$NODE_VERSION" -lt 18 ]; then
-    error "Node.js v$NODE_VERSION found, but v18+ required. Update from https://nodejs.org/"
-    MISSING=1
-  else
-    info "Node.js $(node --version)"
-  fi
-fi
-
-# Python 3.12+
-if ! command -v python3 &> /dev/null; then
-  error "Python 3 not found. Install from https://python.org/downloads/ (3.12+ required, download the .pkg)"
-  MISSING=1
-else
-  PY_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-  PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
-  if [ "$PY_MINOR" -lt 12 ]; then
-    error "Python $PY_VERSION found, but 3.12+ required. Update from https://python.org/downloads/"
-    MISSING=1
-  else
-    info "Python $PY_VERSION"
-  fi
-fi
-
-# VSCode
-if ! command -v code &> /dev/null; then
-  error "VSCode 'code' command not found."
-  echo "      1. Install VSCode from https://code.visualstudio.com/ if needed"
-  echo "      2. Open VSCode"
-  echo "      3. Cmd+Shift+P > 'Shell Command: Install code command in PATH'"
-  MISSING=1
-else
-  info "VSCode $(code --version 2>/dev/null | head -1)"
-fi
-
-if [ "$MISSING" -eq 1 ]; then
-  pause_and_exit
-fi
-
-# -------------------------------------------
-# Step 2: Check Cortex Code CLI
-# -------------------------------------------
-step "2" "Checking Cortex Code CLI..."
-
-# Check common locations
-CORTEX_BIN=""
-if command -v cortex &> /dev/null; then
-  CORTEX_BIN="$(which cortex)"
-elif [ -f "$HOME/.local/bin/cortex" ]; then
-  CORTEX_BIN="$HOME/.local/bin/cortex"
-fi
-
-if [ -z "$CORTEX_BIN" ]; then
-  error "Cortex Code CLI not found."
-  echo ""
-  echo "      Install Cortex Code from Snowflake:"
-  echo "      https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli"
-  echo ""
-  echo "      After installation, verify with:  cortex --version"
-  echo "      If installed to ~/.local/bin, add to PATH:"
-  echo "        export PATH=\"\$HOME/.local/bin:\$PATH\""
-  echo "      (Add that line to your ~/.zshrc or ~/.bashrc to make it permanent)"
-  pause_and_exit
-else
-  CORTEX_VERSION=$("$CORTEX_BIN" --version 2>&1 | head -1)
-  info "Cortex Code CLI: $CORTEX_VERSION (at $CORTEX_BIN)"
-fi
-
-# -------------------------------------------
-# Step 3: Check GitHub authentication
-# -------------------------------------------
-step "3" "Checking GitHub authentication..."
-
-if ! command -v gh &> /dev/null; then
-  warn "GitHub CLI (gh) not installed. Installing now..."
-
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    GH_VERSION="2.67.0"
-    GH_PKG="/tmp/gh_installer.pkg"
-    echo "      Downloading GitHub CLI v${GH_VERSION}..."
-    curl -sL -o "$GH_PKG" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_macOS_universal.pkg"
-
-    if ! file "$GH_PKG" | grep -q "xar archive"; then
-      error "Download failed. Install manually from https://cli.github.com/"
-      pause_and_exit
-    fi
-
-    echo "      Installing (requires your password)..."
-    sudo installer -pkg "$GH_PKG" -target / 2>&1
-    rm -f "$GH_PKG"
-
-    if command -v gh &> /dev/null; then
-      info "GitHub CLI $(gh --version | head -1 | awk '{print $3}')"
-    else
-      error "GitHub CLI installation failed. Install manually from https://cli.github.com/"
-      pause_and_exit
-    fi
-  else
-    error "Install GitHub CLI from https://cli.github.com/ and re-run this script."
-    pause_and_exit
-  fi
-else
-  info "GitHub CLI $(gh --version | head -1 | awk '{print $3}')"
-fi
-
-if ! gh auth status &> /dev/null; then
+elif ! gh auth status &> /dev/null; then
   warn "Not logged in to GitHub. Run these two commands, then re-run setup.sh:"
   echo ""
   echo "      gh auth login"
@@ -226,9 +455,29 @@ else
 fi
 
 # -------------------------------------------
-# Step 4: Fix npm cache permissions if needed
+# Dry-run short-circuit: skip build/configure steps, nothing below this point
+# should run during a preview.
 # -------------------------------------------
-step "4" "Checking npm setup..."
+if [ "$DRY_RUN" = "1" ]; then
+  echo ""
+  echo "═══════════════════════════════════════════════════════════"
+  echo "  DRY RUN complete -- no changes made to this laptop."
+  echo "═══════════════════════════════════════════════════════════"
+  echo ""
+  if [ -n "$LABUSER_NUM" ]; then
+    echo "  To run for real on a bare lab laptop:  ./setup.sh $LABUSER_NUM"
+  else
+    echo "  To run for real:  ./setup.sh [1-7]   (lab laptop / instructor mode)"
+    echo "                    ./setup.sh         (dev flow, placeholder creds)"
+  fi
+  echo ""
+  exit 0
+fi
+
+# -------------------------------------------
+# Step 3: Fix npm cache permissions if needed
+# -------------------------------------------
+step "3" "Checking npm setup..."
 
 NPM_CACHE_DIR="$HOME/.npm"
 if [ -d "$NPM_CACHE_DIR" ]; then
@@ -245,9 +494,9 @@ else
 fi
 
 # -------------------------------------------
-# Step 5: Build Cortex Code VSCode extension
+# Step 4: Build Cortex Code VSCode extension
 # -------------------------------------------
-step "5" "Building Cortex Code VSCode extension..."
+step "4" "Building Cortex Code VSCode extension..."
 
 cd "$TOOLKIT_DIR/cortex-code"
 
@@ -285,9 +534,9 @@ code --install-extension "$VSIX_FILE" --force 2>&1 | tail -1
 info "Cortex Code VSCode extension installed ($VSIX_FILE)"
 
 # -------------------------------------------
-# Step 6: Build Fivetran Code MCP Server
+# Step 5: Build Fivetran Code MCP Server
 # -------------------------------------------
-step "6" "Building Fivetran Code MCP Server..."
+step "5" "Building Fivetran Code MCP Server..."
 
 cd "$TOOLKIT_DIR/fivetran-code"
 
@@ -309,9 +558,9 @@ else
 fi
 
 # -------------------------------------------
-# Step 7: Set up SE Demo MCP Server
+# Step 6: Set up SE Demo MCP Server
 # -------------------------------------------
-step "7" "Setting up SE Demo MCP Server..."
+step "6" "Setting up SE Demo MCP Server..."
 
 cd "$TOOLKIT_DIR/mcp-servers/se-demo"
 
@@ -354,9 +603,9 @@ fi
 info "SE Demo MCP Server ready"
 
 # -------------------------------------------
-# Step 8: Install HOL skill files
+# Step 7: Install HOL skill files
 # -------------------------------------------
-step "8" "Installing HOL skill files..."
+step "7" "Installing HOL skill files..."
 
 SKILL_SRC="$TOOLKIT_DIR/skills/fivetran-snowflake-hol-sfsummit2026-v2"
 SKILL_DST="$HOME/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2"
@@ -372,9 +621,9 @@ else
 fi
 
 # -------------------------------------------
-# Step 9: Set up credentials and config
+# Step 8: Set up credentials and config
 # -------------------------------------------
-step "9" "Setting up credentials and config..."
+step "8" "Setting up credentials and config..."
 
 # --- ~/.fivetran-code/config.json ---
 CONFIG_DIR="$HOME/.fivetran-code"
@@ -422,9 +671,9 @@ else
 fi
 
 # -------------------------------------------
-# Step 10: Configure MCP servers for Cortex
+# Step 9: Configure MCP servers for Cortex
 # -------------------------------------------
-step "10" "Configuring MCP servers for Cortex Code..."
+step "9" "Configuring MCP servers for Cortex Code..."
 
 MCP_CONFIG_DIR="$HOME/.snowflake/cortex"
 MCP_CONFIG_FILE="$MCP_CONFIG_DIR/mcp.json"
@@ -478,10 +727,10 @@ else
 fi
 
 # -------------------------------------------
-# Step 11: Lab-mode credential population (LABUSER_NUM only)
+# Step 10: Lab-mode credential population (LABUSER_NUM only)
 # -------------------------------------------
 if [ "$LAB_MODE" = "1" ]; then
-  step "11" "Lab mode: loading labuser ${LABUSER_NUM} credentials from setup/creds/..."
+  step "10" "Lab mode: loading labuser ${LABUSER_NUM} credentials from setup/creds/..."
 
   # Per-laptop credential file — must be pre-staged on the laptop (scp/USB).
   # NOT committed to the repo (setup/creds/ is in .gitignore).
