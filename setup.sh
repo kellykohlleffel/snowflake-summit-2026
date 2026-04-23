@@ -294,28 +294,45 @@ ensure_gh() {
   track_prereq "GitHub CLI" "INSTALLED" "v$ver"
 }
 
-# Safe-merge VSCode user settings to disable auto-updates.
-# Uses Python setdefault -- only sets keys that are absent; never overwrites.
+# Safe-merge VSCode user settings.
+# Sets three keys, all via Python `setdefault`-style merge (only add if absent;
+# never overwrite existing instructor customizations):
+#   1. update.mode = "none"              -- no VS Code auto-updates mid-Summit
+#   2. extensions.autoUpdate = false     -- no extension auto-updates either
+#   3. cortexCodeForVscode.binaryPath    -- absolute path to cortex binary so
+#                                          the extension finds it regardless of
+#                                          how VS Code was launched (Dock /
+#                                          Spotlight / terminal). Without this,
+#                                          VS Code launched from Dock inherits
+#                                          the launchd PATH -- which doesn't
+#                                          include ~/.local/bin on macOS -- and
+#                                          the extension fails with "cortex
+#                                          binary not found on PATH".
+#
 # On instructor personal laptops (Class 2), settings.json typically exists with
-# custom themes/keybindings -- we must not clobber those. On bare lab laptops
-# (Class 3), settings.json doesn't exist yet and we create it with just the
-# auto-update keys.
+# custom themes/keybindings -- those survive intact. On bare lab laptops the
+# file doesn't exist and we create it with just these three keys.
 configure_vscode_auto_update() {
   local settings_dir="$HOME/Library/Application Support/Code/User"
   local settings_file="$settings_dir/settings.json"
+  local cortex_path="$HOME/.local/bin/cortex"
+
   if [ "$DRY_RUN" = "1" ]; then
     if [ -f "$settings_file" ]; then
-      echo "      [DRY RUN] Would safe-merge auto-update keys into $settings_file"
-      echo "                (adds update.mode=none, extensions.autoUpdate=false only if absent)"
+      echo "      [DRY RUN] Would safe-merge into $settings_file:"
     else
-      echo "      [DRY RUN] Would create $settings_file with auto-update keys"
+      echo "      [DRY RUN] Would create $settings_file with:"
     fi
+    echo "                - update.mode: \"none\""
+    echo "                - extensions.autoUpdate: false"
+    echo "                - cortexCodeForVscode.binaryPath: \"$cortex_path\""
     return 0
   fi
+
   mkdir -p "$settings_dir"
-  python3 - "$settings_file" <<'PYEOF'
+  python3 - "$settings_file" "$cortex_path" <<'PYEOF'
 import json, os, sys
-path = sys.argv[1]
+path, cortex_path = sys.argv[1:3]
 existing = {}
 if os.path.exists(path):
     try:
@@ -325,7 +342,16 @@ if os.path.exists(path):
         print(f"WARNING: {path} is not valid JSON -- leaving untouched")
         sys.exit(0)
 changed = False
-for key, desired in [("update.mode", "none"), ("extensions.autoUpdate", False)]:
+desired_settings = [
+    ("update.mode", "none"),
+    ("extensions.autoUpdate", False),
+    # Absolute path bypasses macOS launchd's PATH limitations -- VSCode
+    # launched from Dock/Spotlight won't have ~/.local/bin, but this
+    # setting tells the Cortex Code extension exactly where to find the
+    # binary regardless of launch method.
+    ("cortexCodeForVscode.binaryPath", cortex_path),
+]
+for key, desired in desired_settings:
     if key not in existing:
         existing[key] = desired
         changed = True
@@ -334,10 +360,38 @@ for key, desired in [("update.mode", "none"), ("extensions.autoUpdate", False)]:
 if changed:
     with open(path, "w") as f:
         json.dump(existing, f, indent=2)
-    print(f"[OK] Merged auto-update keys into {path}")
+    print(f"[OK] Merged VS Code settings into {path}")
 else:
-    print(f"[OK] VS Code auto-update settings already configured")
+    print(f"[OK] VS Code settings already configured")
 PYEOF
+}
+
+# Persist ~/.local/bin to PATH in ~/.zshrc so every new shell (and VS Code
+# launched from a terminal) finds the Cortex CLI and the symlinked `code`
+# binary. setup.sh exports PATH in its own process, but that doesn't persist
+# to future shells. The Cortex CLI installer claims to update shell profile
+# but its choice of profile file (.zprofile vs .zshrc) and its heuristic for
+# whether stdin is a TTY don't reliably land the update where zsh reads it.
+# This helper is idempotent via a marker line.
+persist_local_bin_to_zshrc() {
+  local zshrc="$HOME/.zshrc"
+  local marker="# Summit 2026 HOL lab tooling: ensure ~/.local/bin on PATH"
+  if [ -f "$zshrc" ] && grep -qF "$marker" "$zshrc"; then
+    info "~/.zshrc already has ~/.local/bin PATH export (no-op)"
+    return 0
+  fi
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "      [DRY RUN] Would append to ~/.zshrc:"
+    echo "                $marker"
+    echo '                export PATH="$HOME/.local/bin:$PATH"'
+    return 0
+  fi
+  {
+    echo ""
+    echo "$marker"
+    echo 'export PATH="$HOME/.local/bin:$PATH"'
+  } >> "$zshrc"
+  info "Appended ~/.local/bin to PATH in ~/.zshrc (takes effect in new shells)"
 }
 
 # Prints the final [READY / NEEDS ACTION] table and go/no-go verdict.
@@ -424,6 +478,7 @@ ensure_vscode
 ensure_cortex_cli
 ensure_gh
 configure_vscode_auto_update
+persist_local_bin_to_zshrc
 
 print_prereq_summary
 
