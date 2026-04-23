@@ -1,8 +1,10 @@
-# Lab Laptop Setup Guide — Snowflake Summit 2026 HOL
+# Lab Laptop Setup Guide — Snowflake Summit 2026 HOL (labuser1–6)
 
-Step-by-step walkthrough for bringing a bare Mac up as one of the 7 Summit lab laptops (labuser1–6 = attendee stations, labuser7 = instructor station).
+Step-by-step walkthrough for configuring one of the **6 bare dedicated lab laptops** (labuser1–6 = attendee stations) that Kelly sets up pre-booth. Kelly does this once per laptop from his own Fivetran laptop via `scp`.
 
-**Audience:** whoever is physically sitting at the lab laptop — Kelly, David Hrncir, or any of the other SEs covering booth duty. Works on both bare lab laptops and SE personal Macs that need to become labuser7 instructor stations.
+**Audience:** Kelly, configuring the 6 dedicated lab laptops ahead of Summit.
+
+**Different audience?** If you're a Fivetran lab instructor (Mario, James, Jason, David H, David M, Kelly) configuring your own Fivetran-issued laptop as **labuser7** for dry runs and booth support, use [instructor-laptop-setup-guide.md](instructor-laptop-setup-guide.md) instead. That flow uses 1Password for credential distribution and safe-merges your existing dev state.
 
 **Target time:** ~10 minutes on a bare Mac from clone to `Session is GO`.
 

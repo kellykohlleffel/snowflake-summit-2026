@@ -819,78 +819,181 @@ if [ "$LAB_MODE" = "1" ]; then
   done
   info "Config backups in $BACKUP_DIR"
 
-  # Write lab-mode ~/.fivetran-code/config.json (lab user's scoped API key + PAT)
-  cat > "$CONFIG_FILE" <<CONFIGEOF
-{
-  "fivetranApiKey": "${FIVETRAN_API_KEY_VAL}",
-  "fivetranApiSecret": "${FIVETRAN_API_SECRET_VAL}",
-  "snowflakeAccount": "${SNOWFLAKE_ACCOUNT_VAL}",
-  "snowflakePatToken": "${SNOWFLAKE_PAT_VAL}"
+  # ---------------------------------------------------------------
+  # Write lab-mode config files with SAFE-MERGE semantics.
+  #
+  # On bare lab laptops (1-6): these files don't exist yet, so safe-merge
+  # is effectively a fresh write.
+  #
+  # On instructor Fivetran laptops (labuser7): these files already contain
+  # the instructor's personal dev state -- Anthropic API key, personal
+  # Snowflake connections, dbt RSA key path, custom MCP wiring. Safe-merge
+  # adds/updates only the lab-mode fields and preserves everything else.
+  #
+  # If any merge fails, the backup in $BACKUP_DIR is the recovery path.
+  # ---------------------------------------------------------------
+
+  # 1. ~/.fivetran-code/config.json -- JSON safe-merge
+  python3 - "$CONFIG_FILE" "$FIVETRAN_API_KEY_VAL" "$FIVETRAN_API_SECRET_VAL" "$SNOWFLAKE_ACCOUNT_VAL" "$SNOWFLAKE_PAT_VAL" <<'PYEOF'
+import json, os, sys
+path, api_key, api_secret, sf_account, sf_pat = sys.argv[1:6]
+existing = {}
+if os.path.exists(path):
+    try:
+        with open(path) as f:
+            existing = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"[WARN] {path} is not valid JSON ({e}). Leaving untouched -- "
+              f"fix manually and re-run, OR restore from backup if it was corrupted.",
+              file=sys.stderr)
+        sys.exit(0)
+lab_fields = {
+    "fivetranApiKey": api_key,
+    "fivetranApiSecret": api_secret,
+    "snowflakeAccount": sf_account,
+    "snowflakePatToken": sf_pat,
 }
-CONFIGEOF
-  chmod 600 "$CONFIG_FILE"
-  info "Wrote lab creds to $CONFIG_FILE"
+existing.update(lab_fields)
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    json.dump(existing, f, indent=2)
+    f.write("\n")
+os.chmod(path, 0o600)
+preserved = sorted(k for k in existing if k not in lab_fields)
+if preserved:
+    print(f"[OK] Safe-merged lab creds into {path} (preserved: {', '.join(preserved)})")
+else:
+    print(f"[OK] Wrote lab creds to {path}")
+PYEOF
 
-  # Note: anthropicApiKey intentionally omitted on booth laptops. On SE personal
-  # laptops running ./setup.sh <N>, the existing anthropicApiKey in config.json
-  # gets overwritten by this block — SEs should re-add their personal key after
-  # a lab-mode setup run if they want the token-count footer to work.
+  # 2. ~/.snowflake/connections.toml -- TOML sectional safe-merge
+  python3 - "$SF_CONN" "$SNOWFLAKE_ACCOUNT_VAL" "$SF_LAB_USER" "$SNOWFLAKE_PAT_VAL" "$SNOWFLAKE_WAREHOUSE_VAL" "$SF_LAB_DB" "$SF_LAB_ROLE" <<'PYEOF'
+import os, sys, re
+path, account, user, pat, warehouse, database, role = sys.argv[1:8]
+existing = ""
+if os.path.exists(path):
+    with open(path) as f:
+        existing = f.read()
 
-  # Write lab-mode ~/.snowflake/connections.toml
-  cat > "$SF_CONN" <<SFEOF
-default_connection_name = "summit-lab"
+new_section = (
+    "[summit-lab]\n"
+    f'account = "{account}"\n'
+    f'user = "{user}"\n'
+    f'password = "{pat}"\n'
+    f'warehouse = "{warehouse}"\n'
+    f'database = "{database}"\n'
+    f'role = "{role}"\n'
+)
 
-[summit-lab]
-account = "${SNOWFLAKE_ACCOUNT_VAL}"
-user = "${SF_LAB_USER}"
-password = "${SNOWFLAKE_PAT_VAL}"
-warehouse = "${SNOWFLAKE_WAREHOUSE_VAL}"
-database = "${SF_LAB_DB}"
-role = "${SF_LAB_ROLE}"
-SFEOF
-  chmod 600 "$SF_CONN"
-  info "Wrote lab creds to $SF_CONN"
+header_re = re.compile(r'^\[summit-lab\]\s*$', re.M)
+m = header_re.search(existing)
+if m:
+    # Replace existing [summit-lab] section: from its header to the next [section] or EOF
+    tail = existing[m.end():]
+    next_hdr = re.search(r'^\[', tail, re.M)
+    end = m.end() + (next_hdr.start() if next_hdr else len(tail))
+    new_content = existing[:m.start()] + new_section + existing[end:]
+else:
+    # Append, ensuring a blank-line separator
+    if existing:
+        if not existing.endswith("\n"):
+            existing += "\n"
+        if not existing.endswith("\n\n"):
+            existing += "\n"
+    new_content = existing + new_section
 
-  # Write lab-mode mcp-servers/se-demo/.env
+# Add default_connection_name only if absent (preserve instructor's choice if set)
+if not re.search(r'^default_connection_name\s*=', new_content, re.M):
+    new_content = 'default_connection_name = "summit-lab"\n\n' + new_content
+
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    f.write(new_content)
+os.chmod(path, 0o600)
+
+other_sections = sorted(set(re.findall(r'^\[([^\]]+)\]', new_content, re.M)) - {"summit-lab"})
+if other_sections:
+    print(f"[OK] Safe-merged [summit-lab] into {path} (preserved sections: {', '.join(other_sections)})")
+else:
+    print(f"[OK] Wrote lab creds to {path}")
+PYEOF
+
+  # 3. mcp-servers/se-demo/.env -- dotenv key-level safe-merge
   SE_DEMO_ENV="$TOOLKIT_DIR/mcp-servers/se-demo/.env"
   DBT_VENV_PATH="$TOOLKIT_DIR/mcp-servers/se-demo/.venv/bin/dbt"
   DBT_PROJECT_PATH="$TOOLKIT_DIR/apps/activation-app/dbt_project"
+  ACTIVATION_URL_VAL="https://fivetran-activation-api-81810785507.us-central1.run.app"
 
-  cat > "$SE_DEMO_ENV" <<ENVEOF
-# Lab-mode .env — generated by setup.sh on $(date)
-# Backup of prior .env: ${BACKUP_DIR}/.env
-LABUSER_NUM=${LABUSER_NUM}
-HOL_INSTRUCTOR=${HOL_INSTRUCTOR_VAL}
-LAPTOP_ID=${LAPTOP_ID_VAL}
+  # Pass lab-mode keys to Python via LAB_* env vars (scoped to this invocation only)
+  LAB_LABUSER_NUM="${LABUSER_NUM}" \
+  LAB_HOL_INSTRUCTOR="${HOL_INSTRUCTOR_VAL}" \
+  LAB_LAPTOP_ID="${LAPTOP_ID_VAL}" \
+  LAB_SNOWFLAKE_ACCOUNT="${SNOWFLAKE_ACCOUNT_VAL}" \
+  LAB_SNOWFLAKE_USER="${SF_LAB_USER}" \
+  LAB_SNOWFLAKE_PAT="${SNOWFLAKE_PAT_VAL}" \
+  LAB_SNOWFLAKE_PASSWORD="${SNOWFLAKE_PAT_VAL}" \
+  LAB_SNOWFLAKE_AUTH_TYPE="pat" \
+  LAB_SNOWFLAKE_ROLE="${SF_LAB_ROLE}" \
+  LAB_SNOWFLAKE_WAREHOUSE="${SNOWFLAKE_WAREHOUSE_VAL}" \
+  LAB_SNOWFLAKE_DATABASE="${SF_LAB_DB}" \
+  LAB_DBT_PROFILE_TARGET="lab" \
+  LAB_DBT_PATH="${DBT_VENV_PATH}" \
+  LAB_DBT_PROJECT_DIR="${DBT_PROJECT_PATH}" \
+  LAB_DBT_PROFILES_DIR="${DBT_PROJECT_PATH}" \
+  LAB_FIVETRAN_API_KEY="${FIVETRAN_API_KEY_VAL}" \
+  LAB_FIVETRAN_API_SECRET="${FIVETRAN_API_SECRET_VAL}" \
+  LAB_FIVETRAN_GROUP_ID="${FIVETRAN_GROUP_ID_VAL}" \
+  LAB_ACTIVATION_API_URL="${ACTIVATION_URL_VAL}" \
+  LAB_PG_HOL_HOST="${PG_HOL_HOST_VAL}" \
+  LAB_PG_HOL_PORT="${PG_HOL_PORT_VAL}" \
+  LAB_PG_HOL_DATABASE="${PG_HOL_DATABASE_VAL}" \
+  LAB_PG_HOL_USER="${PG_HOL_USER_VAL}" \
+  LAB_PG_HOL_PASSWORD="${PG_HOL_PASSWORD_VAL}" \
+  python3 - "$SE_DEMO_ENV" <<'PYEOF'
+import os, sys
+path = sys.argv[1]
 
-SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT_VAL}
-SNOWFLAKE_USER=${SF_LAB_USER}
-SNOWFLAKE_PAT=${SNOWFLAKE_PAT_VAL}
-SNOWFLAKE_PASSWORD=${SNOWFLAKE_PAT_VAL}
-SNOWFLAKE_AUTH_TYPE=pat
-SNOWFLAKE_ROLE=${SF_LAB_ROLE}
-SNOWFLAKE_WAREHOUSE=${SNOWFLAKE_WAREHOUSE_VAL}
-SNOWFLAKE_DATABASE=${SF_LAB_DB}
+# Collect lab-mode keys (LAB_FOO -> FOO) from env
+prefix = "LAB_"
+lab_keys = {k[len(prefix):]: v for k, v in os.environ.items() if k.startswith(prefix)}
 
-DBT_PROFILE_TARGET=lab
-DBT_PATH=${DBT_VENV_PATH}
-DBT_PROJECT_DIR=${DBT_PROJECT_PATH}
-DBT_PROFILES_DIR=${DBT_PROJECT_PATH}
+lines = []
+seen = set()
+if os.path.exists(path):
+    with open(path) as f:
+        for line in f:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and "=" in stripped:
+                key = stripped.split("=", 1)[0]
+                if key in lab_keys:
+                    lines.append(f"{key}={lab_keys[key]}\n")
+                    seen.add(key)
+                    continue
+            lines.append(line)
 
-FIVETRAN_API_KEY=${FIVETRAN_API_KEY_VAL}
-FIVETRAN_API_SECRET=${FIVETRAN_API_SECRET_VAL}
-FIVETRAN_GROUP_ID=${FIVETRAN_GROUP_ID_VAL}
+# Append any lab-mode keys not already in the file
+missing = sorted(k for k in lab_keys if k not in seen)
+if missing:
+    if lines and not lines[-1].endswith("\n"):
+        lines.append("\n")
+    marker = "# Lab-mode (added by setup.sh)"
+    if not any(l.strip() == marker for l in lines):
+        lines.append(f"\n{marker}\n")
+    for k in missing:
+        lines.append(f"{k}={lab_keys[k]}\n")
 
-ACTIVATION_API_URL=https://fivetran-activation-api-81810785507.us-central1.run.app
+os.makedirs(os.path.dirname(path), exist_ok=True)
+with open(path, "w") as f:
+    f.writelines(lines)
+os.chmod(path, 0o600)
 
-PG_HOL_HOST=${PG_HOL_HOST_VAL}
-PG_HOL_PORT=${PG_HOL_PORT_VAL}
-PG_HOL_DATABASE=${PG_HOL_DATABASE_VAL}
-PG_HOL_USER=${PG_HOL_USER_VAL}
-PG_HOL_PASSWORD=${PG_HOL_PASSWORD_VAL}
-ENVEOF
-  chmod 600 "$SE_DEMO_ENV"
-  info "Wrote lab creds to $SE_DEMO_ENV (LAPTOP_ID=$LAPTOP_ID_VAL, HOL_INSTRUCTOR=$HOL_INSTRUCTOR_VAL)"
+preserved_keys = [l.split("=", 1)[0] for l in lines
+                  if l.strip() and not l.strip().startswith("#") and "=" in l
+                  and l.split("=", 1)[0] not in lab_keys]
+print(f"[OK] Safe-merged into {path}: {len(seen)} lab keys updated, "
+      f"{len(missing)} added, {len(preserved_keys)} existing preserved")
+PYEOF
+  info "Lab-mode creds written (LAPTOP_ID=$LAPTOP_ID_VAL, HOL_INSTRUCTOR=$HOL_INSTRUCTOR_VAL)"
 
   # Run verification if verify.sh exists
   if [ -x "$TOOLKIT_DIR/setup/verify.sh" ]; then
