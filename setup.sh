@@ -428,34 +428,30 @@ configure_vscode_auto_update
 print_prereq_summary
 
 # -------------------------------------------
-# Step 2: GitHub authentication
+# Step 2: GitHub authentication (only when actually needed)
 # -------------------------------------------
+# The repo is public -- git clone/pull don't need auth. gh is only used by
+# setup.sh for `gh auth setup-git` (HTTPS credentials helper). On a lab
+# laptop (LABUSER_NUM 1-6, attendee-facing), there's no reason to store a
+# GitHub token: the laptops don't push to GitHub and don't touch any
+# private repos. So we skip gh auth on lab laptops entirely -- no operator
+# token ends up on a booth machine that might walk off.
+#
+# On an instructor laptop (LABUSER_NUM=7) or dev mode (no LABUSER_NUM),
+# the operator is an SE working on their own laptop; if they're already
+# authenticated we report it, if not we skip silently -- they can run
+# `gh auth login` themselves if/when they need it for their dev workflow.
 step "2" "Checking GitHub authentication..."
 
-if [ "$DRY_RUN" = "1" ]; then
-  if gh auth status &> /dev/null; then
-    GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
-    info "GitHub authenticated as $GH_USER"
-  else
-    warn "[DRY RUN] Would prompt user to run: gh auth login && gh auth setup-git"
-  fi
-elif ! gh auth status &> /dev/null; then
-  warn "Not logged in to GitHub -- launching 'gh auth login' now."
-  echo "      Choose: GitHub.com -> HTTPS -> Login with a web browser"
-  echo "      Follow the browser prompts, then return to this terminal."
-  echo ""
-  if gh auth login; then
-    GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
-    info "GitHub authenticated as $GH_USER"
-    gh auth setup-git 2>/dev/null || true
-  else
-    error "gh auth login failed or was cancelled"
-    pause_and_exit
-  fi
-else
+if [ "$LAB_MODE" = "1" ] && [ "$LABUSER_NUM" != "7" ]; then
+  info "Skipping GitHub auth (lab-laptop mode: public repo, no token needed on this machine)"
+elif gh auth status &> /dev/null; then
   GH_USER=$(gh auth status 2>&1 | grep "Logged in" | awk '{print $7}' | tr -d '()')
-  info "GitHub authenticated as $GH_USER"
+  info "GitHub authenticated as $GH_USER (leaving existing credentials untouched)"
   gh auth setup-git 2>/dev/null || true
+else
+  info "Not logged in to GitHub -- skipping (not required for setup.sh)."
+  info "Run 'gh auth login' manually if you want gh CLI access from this laptop."
 fi
 
 # -------------------------------------------
