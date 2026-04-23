@@ -25,7 +25,12 @@ fivetran_se_ai_solution_demo:
     # loudly if credentials are missing in the lab scenario.
     lab:
       type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      # Strip .snowflakecomputing.com if present -- the dbt-snowflake adapter
+      # appends it automatically, and doubling the suffix yields a 404.
+      # labuser{N}.env stores the full FQDN for the Python snowflake.connector
+      # in verify.sh (which also strips internally); profiles.yml needs to
+      # strip here to keep dbt's adapter happy.
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') | replace('.snowflakecomputing.com', '') }}"
       user: "{{ env_var('SNOWFLAKE_USER') }}"
       password: "{{ env_var('SNOWFLAKE_PAT') }}"
       role: "{{ env_var('SNOWFLAKE_ROLE') }}"
