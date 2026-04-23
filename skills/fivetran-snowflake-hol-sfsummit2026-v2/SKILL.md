@@ -181,7 +181,10 @@ Ready to start. Step 2: Connect the source?
 
 ### 2.1 Create the PostgreSQL Connector
 
-Use `setup_postgresql_connection` with **exactly** these parameters (substitute only the schema value):
+Use `setup_postgresql_connection` with these parameters. Before calling the tool you MUST substitute two values:
+
+1. `schema` — use the prefix from Step 1.3
+2. `password` — read `PG_HOL_PASSWORD` from `mcp-servers/se-demo/.env` in the repo root and substitute its value
 
 ```json
 {
@@ -190,7 +193,7 @@ Use `setup_postgresql_connection` with **exactly** these parameters (substitute 
   "port": 5432,
   "database": "industry-se-demo",
   "user": "fivetran",
-  "password": "2PcnxqFrHh64WKbfsYDU",
+  "password": "<PG_HOL_PASSWORD from mcp-servers/se-demo/.env>",
   "schema": "[schema prefix from Step 1.3]",
   "connection_type": "google_cloud_postgresql",
   "update_method": "TELEPORT",

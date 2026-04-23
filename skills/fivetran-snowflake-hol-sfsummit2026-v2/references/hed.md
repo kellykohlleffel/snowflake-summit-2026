@@ -1,7 +1,7 @@
 # Higher Education — Student Retention & Success
 
 ## Source
-- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: 2PcnxqFrHh64WKbfsYDU
+- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: <read PG_HOL_PASSWORD from mcp-servers/se-demo/.env>
 - connection_type: google_cloud_postgresql, update_method: TELEPORT
 - Schema: `higher_education`, Table: `hed_records` (751 rows, 22 columns, ~1-2 min sync)
 

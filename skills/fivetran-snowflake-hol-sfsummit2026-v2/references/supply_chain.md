@@ -1,7 +1,7 @@
 # Supply Chain — Demand Intelligence
 
 ## Source
-- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: 2PcnxqFrHh64WKbfsYDU
+- host: 34.94.122.157, port: 5432, database: industry-se-demo, user: fivetran, password: <read PG_HOL_PASSWORD from mcp-servers/se-demo/.env>
 - connection_type: google_cloud_postgresql, update_method: TELEPORT
 - Schema: `supply_chain`, Table: `spl_records` (750 rows, 21 columns, ~1-2 min sync)
 
