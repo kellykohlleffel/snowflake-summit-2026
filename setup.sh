@@ -835,6 +835,19 @@ if [ "$LAB_MODE" = "1" ]; then
   FIVETRAN_KEY_B64="${FIVETRAN_KEY_B64:-}"
   FIVETRAN_GROUP_ID_VAL="${FIVETRAN_GROUP_ID:-}"
 
+  # Canonicalize the Snowflake account locator to the SHORT form (no
+  # .snowflakecomputing.com suffix). Snowflake tools inconsistently handle the
+  # suffix:
+  #   - snowflake.connector (verify.sh) strips it internally, accepts both forms
+  #   - dbt-snowflake adapter APPENDS it, needs short form (fixed in profiles.yml
+  #     via Jinja `| replace` in PR #10)
+  #   - Cortex Code CLI HANGS on "Credentials: Testing..." when the account
+  #     string has the suffix (caught on lab laptop 1 Phase 3 run)
+  # Normalize here once and all downstream writes (config.json,
+  # connections.toml, se-demo/.env) get the short form. Idempotent: no-op if
+  # the suffix is already absent.
+  SNOWFLAKE_ACCOUNT_VAL="${SNOWFLAKE_ACCOUNT_VAL%.snowflakecomputing.com}"
+
   # PG source — shared across all 7 labusers; hardcoded non-secret values,
   # pg_password comes from the .env file.
   PG_HOL_HOST_VAL="${PG_HOL_HOST:-34.94.122.157}"
