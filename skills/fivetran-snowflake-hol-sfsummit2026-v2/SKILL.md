@@ -1,6 +1,6 @@
 ---
-name: fivetran-snowflake-hol-sfsummit2026
-description: "Snowflake Summit 2026 Hands-on Lab — end-to-end Fivetran ODI solution: Source → Move & Manage → Transform → Agent → Activate. Guides a lab attendee through 25 minutes of interactive, educational hands-on steps. Use for: SF Summit 2026 HOL, Snowflake Summit hands-on lab, Fivetran ODI lab."
+name: fivetran-snowflake-hol-sfsummit2026-v2
+description: "Snowflake Summit 2026 Hands-on Lab — end-to-end Fivetran ODI solution: Source → Move & Manage → Transform → Agent → Activate. Guides a lab attendee through 20 minutes of interactive, educational hands-on steps. Use for: SF Summit 2026 HOL, Snowflake Summit hands-on lab, Fivetran ODI lab."
 ---
 
 # Fivetran x Snowflake Hands-on Lab — SF Summit 2026
@@ -29,7 +29,7 @@ If either is missing, tell the attendee: "The lab environment is missing a requi
 
 ## Step Heading Rule (MANDATORY)
 
-At the START of every step (Steps 1-7), output the step heading as a markdown `##` header BEFORE doing anything else for that step. Use these exact headings:
+At the START of every step (Steps 1-8), output the step heading as a markdown `##` header BEFORE doing anything else for that step. Use these exact headings:
 - `## Step 1: Prerequisites Check`
 - `## Step 2: MOVE — Connect the Source`
 - `## Step 3: MOVE & MANAGE — Sync Data to Snowflake`
@@ -37,6 +37,7 @@ At the START of every step (Steps 1-7), output the step heading as a markdown `#
 - `## Step 5: AGENT — Create & Deploy Cortex Agent`
 - `## Step 6: ASK — Interactive Q&A`
 - `## Step 7: ACTIVATE — Push to Business App`
+- `## Step 8: What's Next?`
 
 This creates clear visual section breaks in the chat UI. Do NOT skip these headings.
 
@@ -44,28 +45,27 @@ This creates clear visual section breaks in the chat UI. Do NOT skip these headi
 
 - **Do NOT use markdown blockquote markers** (`>`) in your responses.
 - **Do NOT use horizontal rules** (`---` or `***`).
-- **ALWAYS insert a blank line between every paragraph** in educational content. Each block of text MUST be separated by an empty line (`\n\n`). Never run paragraphs together with only a single newline — the UI needs double newlines to render paragraph spacing. This is critical for readability.
+- **ALWAYS insert a blank line between every paragraph** in context content. Each block of text MUST be separated by an empty line (`\n\n`). Never run paragraphs together with only a single newline — the UI needs double newlines to render paragraph spacing. This is critical for readability.
 - These rules ensure consistent rendering across both Fivetran Code and Cortex Code VSCode extensions.
 
 ## Lab Roadmap (Show First)
 
 When the skill is invoked, ALWAYS start by showing this roadmap AND asking for industry selection. Do NOT make any tool calls or run any prerequisites until the user selects an industry. This is mandatory even if no industry argument is provided.
 
-```
-FIVETRAN x SNOWFLAKE HANDS-ON LAB — 25 Minutes
-══════════════════════════════════════════
+**FIVETRAN x SNOWFLAKE HANDS-ON LAB -- 20 Minutes**
 
-Step 1  Prerequisites Check .............. 2 min
-Step 2  MOVE: Connect the Source ......... 3 min
-Step 3  MOVE & MANAGE: Sync to Snowflake . 3-5 min
-Step 4  TRANSFORM: Build dbt Project ..... 5-8 min
-Step 5  AGENT: Create & Deploy Cortex Agent  3 min
-Step 6  ASK: Interactive Q&A ............. 5-8 min
-Step 7  ACTIVATE: Push to Business App ... 2-3 min
+| Step | Phase | Time |
+|------|-------|------|
+| 1 | Prerequisites Check | 2 min |
+| 2 | MOVE: Connect the Source | 3 min |
+| 3 | MOVE & MANAGE: Sync to Snowflake | 3-5 min |
+| 4 | TRANSFORM: Build dbt Project | 5-8 min |
+| 5 | AGENT: Create & Deploy Cortex Agent | 3 min |
+| 6 | ASK: Interactive Q&A | 5-8 min |
+| 7 | ACTIVATE: Push to Business App | 2-3 min |
+| 8 | What's Next? | 1 min |
 
-Industry: [selected below]
-MCP Servers: fivetran-code + se-tools
-```
+**Industry:** [selected below] | **MCP Servers:** fivetran-code + se-tools
 
 Then IMMEDIATELY ask (do NOT skip this — output this text before doing anything else):
 
@@ -106,29 +106,6 @@ These defaults are used unless the user overrides them:
   - `healthcare.cds_records` (750 rows)
   - `supply_chain.spl_records` (750 rows)
 
-### Environment Detection (for booth lab laptops)
-
-The defaults above reflect Kelly's dev Snowflake account. When this skill runs
-on a dedicated lab laptop (Snowflake Summit / BDL booth), the per-laptop values
-come from env vars set by `setup.sh`:
-
-- `LABUSER_NUM` (1–7) — which lab user this laptop is. If set, you're on a
-  booth lab laptop.
-- `SNOWFLAKE_DATABASE` — e.g., `SF_LABUSER3_DB`. Overrides the `HOL_DATABASE_1`
-  default in the readiness summary and downstream calls.
-- `FIVETRAN_GROUP_ID` — e.g., `really_woof`. Overrides the default
-  `verbatim_suite` group for connector creation.
-- `LAPTOP_ID` — e.g., `laptop3`. Used by `activate_to_app` / `reset_activation_app`
-  to namespace per-laptop data in the activation React app.
-- `HOL_INSTRUCTOR` — `"true"` only on labuser-7 laptop. Controls whether
-  Step 8 cleanup is offered.
-
-If `LABUSER_NUM` is set, tell the user in Step 1 that you're running as
-lab user `$LABUSER_NUM` against `$SNOWFLAKE_DATABASE`. The MCP tools read
-these env vars automatically — you just need to phrase the narrative
-accurately (e.g., "I'll create the connector in your lab destination
-`$FIVETRAN_GROUP_ID`").
-
 ---
 
 ## Step 1: Prerequisites Check (2 min)
@@ -161,17 +138,16 @@ Tell the user you'll use the default group **HOL_DATABASE_1** (they can say a di
 ### 1.4 Confirm Ready
 
 After the user answers, show:
-```
-✓ Snowflake: Connected ([account])
-✓ Fivetran API: Connected ([N] groups)
-✓ Group: HOL_DATABASE_1 [or user override]
-✓ Industry: [industry]
-✓ Source: PostgreSQL at 34.94.122.157 / industry-se-demo / [schema]
-✓ Dataset: [table] ([row_count] rows, ~1-2 min sync)
-✓ Schema prefix: [prefix from 1.3]
 
-Ready to start. Step 2: Connect the source?
-```
+- **Snowflake:** Connected ([account])
+- **Fivetran API:** Connected ([N] groups)
+- **Group:** HOL_DATABASE_1 [or user override]
+- **Industry:** [industry]
+- **Source:** PostgreSQL at 34.94.122.157 / industry-se-demo / [schema]
+- **Dataset:** [table] ([row_count] rows, ~1-2 min sync)
+- **Schema prefix:** [prefix from 1.3]
+
+Ready to start. **Step 2: Connect the source?**
 
 **STOP — Wait for confirmation before proceeding.**
 
@@ -181,10 +157,7 @@ Ready to start. Step 2: Connect the source?
 
 ### 2.1 Create the PostgreSQL Connector
 
-Use `setup_postgresql_connection` with these parameters. Before calling the tool you MUST substitute two values:
-
-1. `schema` — use the prefix from Step 1.3
-2. `password` — read `PG_HOL_PASSWORD` from `mcp-servers/se-demo/.env` in the repo root and substitute its value
+Use `setup_postgresql_connection` with **exactly** these parameters (substitute only the schema value):
 
 ```json
 {
@@ -230,14 +203,13 @@ Show what happened:
 ### 2.4 Transition
 
 Show:
-```
-✓ Step 2 Complete: Connector created and tested
-  Connection ID: [id]
-  Schema: [schema_name]
-  Tables: [table_list]
 
-Step 3: Start the sync?
-```
+**Step 2 Complete: Connector created and tested**
+- **Connection ID:** [id]
+- **Schema:** [schema_name]
+- **Tables:** [table_list]
+
+**Step 3: Start the sync?**
 
 **STOP — Wait for confirmation.**
 
@@ -252,38 +224,17 @@ Call `trigger_sync` with the connection_id from Step 2. This auto-unpauses the c
 ### 3.2 Wait for Sync — Share Fivetran Context
 
 **CRITICAL RULES:**
-- **DO NOT poll sync status repeatedly.** The sync takes approximately 2 minutes. Do NOT call `get_connection` more than once before the SE says "check".
+- **DO NOT poll sync status repeatedly.** The sync takes approximately 2 minutes. Do NOT call `get_connection_details` more than once before the SE says "check".
 - **DO NOT fall back to a different schema.** ALWAYS use the exact schema created by the connector in Step 2 (e.g., PHARMA_FIVETRAN_CODE_3_PHARMA). NEVER look for or use pre-existing schemas from prior lab runs.
 - **DO NOT make up explanations.** If the sync is still queued, say it's still queued — don't invent stories about pre-loaded data or shared datasets.
 
-After triggering the sync, check status ONCE with `get_connection`. Then share educational content about Fivetran while the SE waits. Present ONE block at a time, pausing naturally between them:
+After triggering the sync, check status ONCE with `get_connection_details`. Then **read `references/educational/step3_sync_context.md`** and share the context blocks naturally — one at a time with pauses between them — while the attendee waits for the sync. After all blocks, ask the attendee to say "check" when ready.
 
-**Block 1** (immediately after trigger):
-> Fivetran detects schema changes automatically — new columns, new tables, renames. After this initial load, every subsequent sync is incremental — only changed rows move. For a 750-row table this takes seconds. For tables with millions of rows, Fivetran still only moves the delta. Sync frequency is configurable from every 1 minute to every 24 hours depending on your downstream data freshness requirements.
-
-**Block 2** (~15 seconds later):
-> While the data moves, Fivetran is also managing it. Data is encrypted in transit and at rest using AES-256 encryption. Credentials are stored in a dedicated secrets store — never in application databases. Fivetran automatically handles schema drift detection, column hashing for sensitive fields, and soft deletes — all without any configuration. Today we're using a traditional Snowflake destination, but Fivetran also offers a Managed Data Lake Service with fully managed open-format Iceberg tables — same pipeline, open table format.
-
-**Block 3** (~30 seconds later):
-> Everything we just did — connector creation, cert approval, table selection, sync trigger — runs through the Fivetran REST API. That's how Fivetran Code works, it's how MCP servers integrate with Fivetran, and it's how you can programmatically manage your entire data infrastructure. The Fivetran UI is equally powerful and fully featured — today we're showing the programmatic path to highlight the flexibility. Terraform provider and CI/CD pipeline integration available too.
-
-**Block 4** (~45 seconds later):
-> In production, Fivetran webhook notifications fire the moment a sync completes — triggering your dbt transformation automatically. Zero human intervention. Fivetran also supports hybrid deployment — run the data pipeline in Fivetran's SaaS infrastructure like we're doing here, or deploy within your own cloud environment for data residency requirements.
-
-**Block 5** (~60 seconds later):
-> Fivetran supports 750+ connectors out of the box — databases, SaaS applications, cloud storage, webhooks. Each connector is fully managed: Fivetran handles authentication, rate limiting, pagination, schema management, and automatic retries.
-
-**Block 6** (~75 seconds later):
-> For sources not in the catalog, the Fivetran Connector SDK lets you build custom connectors in Python that run in Fivetran's managed infrastructure — no Lambda, no hosting, no timeouts. You can build a production-grade custom connector with the Fivetran Connector SDK using an AI Assistant and a Fivetran Connector Builder Skill or similar — be sure and keep an eye out for that custom build capability showing up in the Fivetran UI as well. The SDK supports incremental syncing, soft deletes, and private networking — same enterprise-grade reliability as the native connectors.
-
-After sharing all 4 blocks (~2 minutes total), say:
-> The sync should be complete soon (within a few minutes). Say "check" when you're ready and I'll verify the data landed in Snowflake.
-
-Then wait for the SE to say "check" (or similar). Only then call `get_connection` and verify in Snowflake.
+Then wait for the attendee to say "check" (or similar). Only then call `get_connection_details` and verify in Snowflake.
 
 ### 3.3 Confirm Sync Complete (only when SE says "check")
 
-Call `get_connection` to verify sync completed. Then verify data in Snowflake using the EXACT schema from Step 2:
+Call `get_connection_details` to verify sync completed. Then verify data in Snowflake using the EXACT schema from Step 2:
 
 Call `mcp__se-demo__run_snowflake_query`:
 ```sql
@@ -296,14 +247,13 @@ When confirmed, briefly note:
 > Fivetran detected the PostgreSQL schema, created the Snowflake schema, moved the data, and set up incremental change detection — configurable from every 1 minute to every 24 hours depending on your use case and downstream data freshness requirements. In production, Fivetran webhook notifications fire the moment a sync completes, triggering downstream processes like dbt transformations automatically.
 
 Then show:
-```
-✓ Step 3 Complete: Data synced to Snowflake
-  Rows loaded: [count]
-  Sync time: [duration]
-  Destination: [database].[schema].[table]
 
-Step 4: Build the dbt project and transform the data?
-```
+**Step 3 Complete: Data synced to Snowflake**
+- **Rows loaded:** [count]
+- **Sync time:** [duration]
+- **Destination:** [database].[schema].[table]
+
+**Step 4: Build the dbt project and transform the data?**
 
 **STOP — Wait for confirmation.**
 
@@ -311,31 +261,19 @@ Step 4: Build the dbt project and transform the data?
 
 ## Step 4: TRANSFORM — Build & Run dbt Project (5-8 min)
 
-### Educational Context (share before, during, and after dbt runs)
+### Context
 
-**Block 1** (before running dbt):
-> dbt transforms raw data in your data and AI platform using SQL and software engineering best practices: version control, testing, documentation, and lineage. It doesn't extract or load data — Fivetran handles that. dbt handles the T in ELT. Fivetran offers multiple dbt transformation options: Quickstart for no-code transformations, dbt Core for full SQL control with Fivetran-managed orchestration, and dbt Platform integration for teams already using dbt Platform. Together, Fivetran and dbt form a complete, automated data pipeline.
-
-**Block 2** (while dbt runs):
-> We're building three layers. Staging cleans the raw source data — casting text dates to proper date types, rounding decimals. The mart layer adds business logic — computed risk scores, age group buckets, at-risk flags. And the semantic view adds rich metadata comments to every column. Those comments are what makes the AI agent smart — it reads them to understand what each metric means.
-
-**Block 3** (after dbt run, before dbt test):
-> dbt tests run AFTER dbt run — not before. Tests validate the built objects in Snowflake by querying the actual views and tables to check constraints like uniqueness and not-null. The objects have to exist before you can test them. This is dbt's "trust but verify" approach.
-
-**Block 4** (after dbt test):
-> In production, Fivetran orchestrates dbt transformations automatically — every time a sync completes, Fivetran triggers the dbt run. The entire pipeline from source change to transformed, tested data is event-driven with zero human intervention. Source → Move & Manage → Transform — fully automated.
+**Read `references/educational/step4_transform_context.md`** and share the blocks before, during, and after dbt runs as indicated by the timing cues in the file.
 
 ### 4.1 Explain the dbt Project
 
 The dbt project is pre-built for each industry with 3 models:
 
-```
-PostgreSQL (raw)          dbt Transformation                      Snowflake
-─────────────────    ──────────────────────────────────    ─────────────────────
-[source_table]  →    stg_[table] (clean & cast)       →  [SCHEMA]_STAGING
-                     fct_[domain] (enrich)             →  [SCHEMA]_MARTS
-                     sv_[domain] (semantic view)       →  [SCHEMA]_SEMANTIC
-```
+| PostgreSQL (raw) | dbt Transformation | Snowflake |
+|---|---|---|
+| [source_table] | stg_[table] (clean & cast) | [SCHEMA]_STAGING |
+| | fct_[domain] (enrich) | [SCHEMA]_MARTS |
+| | sv_[domain] (semantic view) | [SCHEMA]_SEMANTIC |
 
 Show what the dbt project contains — explain each layer briefly:
 - **Staging**: Cleans raw data — casts types, rounds decimals
@@ -404,14 +342,13 @@ Here's what happened in Step 4:
 ### 4.5 Transition
 
 Show:
-```
-✓ Step 4 Complete: dbt project built and deployed
-  Staging: stg_phr_records ([count] rows)
-  Mart: fct_clinical_trials ([count] rows, risk scores + age buckets)
-  Semantic: sv_clinical_trials (ready for Cortex Agent)
 
-Step 5: Deploy the Cortex Agent?
-```
+**Step 4 Complete: dbt project built and deployed**
+- **Staging:** stg_phr_records ([count] rows)
+- **Mart:** fct_clinical_trials ([count] rows, risk scores + age buckets)
+- **Semantic:** sv_clinical_trials (ready for Cortex Agent)
+
+**Step 5: Create and deploy the Cortex Agent?**
 
 **STOP — Wait for confirmation.**
 
@@ -419,19 +356,9 @@ Step 5: Deploy the Cortex Agent?
 
 ## Step 5: AGENT — Create & Deploy Cortex Agent (3 min)
 
-### Educational Context (share before and after agent creation)
+### Context
 
-**Block 1** (before creating the agent):
-> Snowflake Cortex Agents combine large language models with structured data access through semantic views. The semantic view we just built with dbt contains rich metadata comments on every column — those comments are what the agent reads to understand what each metric means. No model training, no fine-tuning, no vector embeddings. Structured metadata is all it needs.
-
-**Block 2** (while creating):
-> The agent uses Cortex Analyst as its tool — a text-to-SQL engine that translates natural language questions into precise SQL queries against the semantic view. The column comments guide Cortex Analyst on what each field means, what thresholds matter, and how to interpret the results. Better comments mean better answers.
-
-**Block 3** (after creation):
-> We just created an AI agent from a single SQL statement. The entire intelligence comes from the data pipeline we built: Fivetran moved the data, dbt transformed and documented it, and now Cortex reads that documentation to answer questions. This is the modern data stack in action — each tool does one thing well, and together they deliver AI-ready data.
-
-**Block 4** (transition to Q&A):
-> Snowflake Cortex runs entirely inside Snowflake's secure perimeter. Your data never leaves the platform — the LLM comes to the data, not the other way around. No data copying, no external API calls with sensitive information, no compliance concerns. This is enterprise AI built on governance.
+**Read `references/educational/step5_agent_context.md`** and share the blocks before and after agent creation as indicated by the timing cues in the file.
 
 ### 5.1 Create the Cortex Agent
 
@@ -450,21 +377,24 @@ Call it with:
 
 Call `mcp__se-demo__list_cortex_agents` with the database name to confirm the agent exists.
 
-### 5.3 Summary
+### 5.3 Pre-warm the Agent
+
+Send a warm-up question via `query_cortex_agent` — e.g., "How many records are in the dataset?" Frame it as: "Let me verify the agent can answer questions." Show the brief result and move on.
+
+### 5.4 Summary
 
 > We just created an AI agent from a single SQL statement. It reads the semantic view metadata — the column comments from the dbt project — to understand what every metric means. No model training, no fine-tuning. Structured metadata is all it needs. This is the power of the Snowflake + Fivetran data stack: clean data, rich metadata, instant AI.
 
 Show:
-```
-✓ Step 5 Complete: Cortex Agent created and deployed
-  Agent: [AGENT_NAME]
-  Location: [DATABASE].[SEMANTIC_SCHEMA]
-  Semantic view: [SV_NAME]
-  Sample questions: [count] pre-configured
-  Ready for natural language queries
 
-Step 6: Let's ask the agent some questions?
-```
+**Step 5 Complete: Cortex Agent created and deployed**
+- **Agent:** [AGENT_NAME]
+- **Location:** [DATABASE].[SEMANTIC_SCHEMA]
+- **Semantic view:** [SV_NAME]
+- **Sample questions:** [count] pre-configured
+- Ready for natural language queries
+
+**Step 6: Let's ask the agent some questions?**
 
 **STOP — Wait for confirmation.**
 
@@ -472,58 +402,58 @@ Step 6: Let's ask the agent some questions?
 
 ## Step 6: ASK — Interactive Q&A (5-8 min)
 
+**MANDATORY Q&A RULES -- READ BEFORE EXECUTING ANY QUESTION:**
+1. When the user says a number (e.g., "5"), run THAT question. NOT question 1. The number maps directly to the numbered list.
+2. Run exactly ONE question per user message. Never run 2 or more questions in one turn.
+3. After answering, STOP. Show the question list. Wait for the user's next input. Do NOT auto-run the next question.
+4. Only proceed to Step 7 when the user explicitly says "activate".
+
 ### 6.1 Present Sample Questions
 
 Show the industry-specific sample questions from the reference file. Format them as a numbered list.
 
 Example:
-```
+
 Sample questions for the Cortex Agent:
 
-  1. [opening question — broad overview]
-  2. [opening question — key metric]
-  3. [analytical question — comparison]
-  4. [analytical question — risk/opportunity]
-  5. [executive question — business insight]
+1. [opening question -- broad overview]
+2. [opening question -- key metric]
+3. [analytical question -- comparison]
+4. [analytical question -- risk/opportunity]
+5. [executive question -- business insight]
 
 Pick a number, or ask your own question.
-```
 
 ### 6.2 Execute Questions
 
-For each question, call `query_cortex_agent` (the native Fivetran Code tool, NOT `mcp__se-demo__cortex_analyst`). The native tool streams the agent's response progressively to the UI — the user sees thinking steps and the answer appear in real-time, just like the PSE Intelligence app. The MCP tool returns a blob with no streaming.
+**CRITICAL — RUN ONLY THE QUESTION THE USER SELECTED.** If the user says "5", run question 5. If the user says "2", run question 2. Do NOT start from question 1. Do NOT run multiple questions. Run exactly ONE question per user input.
+
+For the selected question, call `query_cortex_agent` (the native Fivetran Code tool, NOT `mcp__se-demo__cortex_analyst`). The native tool streams the agent's response progressively to the UI. The MCP tool returns a blob with no streaming.
 
 **CRITICAL:** Always use `query_cortex_agent` for Step 6 Q&A. Never use `mcp__se-demo__cortex_analyst` here.
 
-**CRITICAL — PRESENT THE RESULTS:** After the `query_cortex_agent` tool completes, you MUST present the agent's key findings in your own response — with clean formatted tables, key metrics, and actionable insights. Do NOT just say "That answer came from..." — actually summarize the data the agent returned. Present it exactly as you would if the question were asked outside the skill: tables, bullet points, findings, recommendations. The streaming tool card shows the raw thinking; YOUR response shows the polished answer.
+**CRITICAL — PRESENT THE RESULTS:** After the `query_cortex_agent` tool completes, you MUST present the agent's key findings in your own response — with clean formatted tables, key metrics, and actionable insights. Do NOT just say "That answer came from..." — actually summarize the data the agent returned.
 
 After presenting the results, briefly note the data flow:
-> That answer came from: PostgreSQL source → Fivetran sync → dbt transformation → Cortex Agent. Automated end-to-end.
+> That answer came from: PostgreSQL source -> Fivetran sync -> dbt transformation -> Cortex Agent. Automated end-to-end.
 
-**CRITICAL — After EVERY answer + educational block, ALWAYS re-display the full sample question list.** Mark answered questions with (done). End with the activate prompt. Example:
+**CRITICAL — After EVERY answer, ALWAYS re-display the full sample question list, then STOP and WAIT for the user to pick another number or say activate.** Do NOT automatically run the next question. Do NOT continue without user input. Mark answered questions with (done). Example:
 
-```
 Pick another number, ask your own question, or say **activate** to push insights to the app.
 
-  1. [question] (done)
-  2. [question]
-  3. [question]
-  4. [question]
-  5. [question]
-```
+1. [question] (done)
+2. [question]
+3. [question]
+4. [question]
+5. [question]
+
+**STOP HERE — Wait for the user to pick a number, ask a question, or say activate. Do NOT proceed without user input.**
 
 Do NOT skip re-listing the questions. The SE should never have to scroll up.
 
-### Educational Context (weave in between questions)
+### Context
 
-**Block 1** (after first question):
-> Every answer you just saw was generated by the Cortex Agent querying the semantic view we built with dbt. The agent translated your natural language question into SQL, ran it against Snowflake, and interpreted the results using the column comments we wrote. Better metadata means better answers — that's why the dbt semantic view is the most important model in the project.
-
-**Block 2** (after second question):
-> This same agent can be embedded in Snowflake's Cortex Code — a coding assistant that lets developers query business data alongside their code. Imagine a data engineer debugging a pipeline and asking "which trials had the highest dropout rate last month?" directly from their IDE. Same semantic view, same agent, different interface.
-
-**Block 3** (after third question):
-> Snowflake Cortex supports multiple agent patterns: single-tool agents like this one, multi-tool agents that combine Cortex Analyst with Cortex Search (for unstructured data), and orchestration agents that coordinate multiple sub-agents. The semantic view pattern scales from a hands-on lab like this to enterprise-wide data mesh architectures.
+**Read `references/educational/step6_qa_context.md`** and weave the blocks in between questions as indicated by the timing cues in the file.
 
 ### 6.3 Encourage Interaction
 
@@ -535,14 +465,12 @@ After 2-3 sample questions, invite questions:
 After the Q&A, connect the dots for the audience. Reference the at-risk/high-priority records that were identified during the Q&A — this creates narrative continuity into Step 7.
 
 Show:
-```
-✓ Step 6 Complete: Cortex Agent answering business questions
 
-We've built the full pipeline: Source → Move & Manage → Transform → Agent.
-Now let's close the loop — activate these insights back to a business app.
+**Step 6 Complete: Cortex Agent answering business questions**
 
-Step 7: Activate insights to the business app?
-```
+We've built the full pipeline: Source -> Move & Manage -> Transform -> Agent. Now let's close the loop -- activate these insights back to a business app.
+
+**Step 7: Activate insights to the business app?**
 
 **STOP — Wait for confirmation.**
 
@@ -550,19 +478,9 @@ Step 7: Activate insights to the business app?
 
 ## Step 7: ACTIVATE — Push to Business App (2-3 min)
 
-### Educational Context (share before and after activation)
+### Context
 
-**Block 1** (before activation):
-> The pipeline doesn't end at the Agentic AI workload. Fivetran's vision is Open Data Infrastructure — Move & Manage, Transform, Agent, and Activate. Fivetran Activations closes the loop by pushing insights from your data and AI platform back to the tools your business runs on — Slack, Salesforce, HubSpot, Zendesk, or your own custom applications. Data in, insights out.
-
-**Block 2** (while activating):
-> Fivetran Activations syncs data from Snowflake to operational systems. You define what data to push, where it goes, and how often. It's the same managed, automated approach as Fivetran connectors — but in the other direction. Move data in with connectors, push insights out with Activations.
-
-**Block 3** (after data appears in app):
-> What you just saw is the complete Fivetran ODI lifecycle in action. Source data moved and managed from PostgreSQL to Snowflake — with Fivetran handling schema drift detection, AES-256 encryption in transit and at rest, column hashing for sensitive data, and automatic retry logic. Today we used traditional Snowflake storage, but Fivetran also offers a Managed Data Lake Service (MDLS) with fully managed open-format Iceberg tables — same pipeline, same management, but with open table formats for multi-engine access. The data was then transformed by dbt into AI-ready views, queried by a Cortex Agent using natural language, and activated back to a business application in real-time. Every step automated, every step managed, every step from a single conversational CLI.
-
-**Block 4** (closing):
-> Fivetran Activations supports 200+ destinations out of the box — CRMs, marketing platforms, support tools, data apps, and webhooks. The same pipeline we just built could push at-risk alerts to Slack or Teams, update a Salesforce or HubSpot dashboard, or trigger a targeted re-engagement campaign. Your data and AI platform becomes the single source of truth, and Activations makes it actionable.
+**Read `references/educational/step7_activate_context.md`** and share the blocks before and after activation as indicated by the timing cues in the file.
 
 ### 7.1 Activate Insights
 
@@ -590,84 +508,27 @@ The data appears in real-time on the industry tab.
 
 **STOP — Wait for the user to open the app and review the data. Then say:**
 
-> "After you've had a chance to look at the activation app, I can show you the complete story of what we just built. Just say **go** when you're ready."
+"After you've had a chance to look at the activation app, say **go** when you're ready for the lab wrap-up and what's next."
 
-**STOP — Wait for the user to say "go" (or similar) before continuing.**
-
-### 7.4 The Full Story
-
-> Full circle. Source data → Fivetran pipeline → dbt transformation → AI agent → activated back to a business application. All automated. All managed. This is Fivetran's Open Data Infrastructure vision: **Move & Manage, Transform, Agent, Activate.**
-
-### 7.5 Solution Complete
-
-Show:
-```
-══════════════════════════════════════════
-  SOLUTION COMPLETE — Full ODI Lifecycle
-══════════════════════════════════════════
-
-  ✓ MOVE & MANAGE:  PostgreSQL → Fivetran → Snowflake
-  ✓ TRANSFORM:      dbt staging → mart → semantic view
-  ✓ AGENT:          Cortex Agent answering business questions
-  ✓ ACTIVATE:       Insights pushed to business app (real-time)
-                    https://fivetran-activation-demo.web.app/
-
-  Tools used: Fivetran Code + se-demo MCP server
-  UIs opened: 0
-
-  "From connectors to data agents to activation
-   — simple, automated, reliable and secure."
-══════════════════════════════════════════
-```
-
-**NOTE:** The actual session elapsed time is appended automatically by Fivetran Code after this block — do NOT include a "Total time" line manually.
+**STOP HERE. Do NOT continue until the user says "go" (or similar). This is a mandatory wait point.**
 
 ---
 
-## Step 8: Cleanup (Instructor Only)
+## Step 8: What's Next? (1 min)
 
-**DO NOT auto-prompt cleanup at the end of Step 7.** Attendees end the lab with
-the "SOLUTION COMPLETE" block and nothing further.
+**This step ONLY runs after the user says "go" at the end of Step 7.** Do NOT show this content until the user explicitly says go.
 
-Cleanup is **only** triggered when the user explicitly says "cleanup" or "reset",
-AND only on the instructor laptop (where `HOL_INSTRUCTOR=true` is set in env).
+**Read `references/educational/step8_whats_next.md`** and present the lab summary (8.1), What's Next CTAs (8.2), and cleanup prompt (8.3) exactly as written in the file. Show all three sections in order. The What's Next CTA block uses emoji visual markers intentionally — this is an exception to the no-emoji rule.
 
-### Attendee laptops (HOL_INSTRUCTOR ≠ "true")
+**STOP after showing the cleanup prompt. Do NOT run cleanup automatically. Only run cleanup if the user explicitly says "cleanup" or "yes".**
 
-If an attendee types "cleanup" (or similar) on a non-instructor laptop, respond:
+### Cleanup Flow (when user says "cleanup")
 
-> "Lab complete! Cleanup is handled by the instructor between sessions — you're
-> all set. Thanks for running through the lab."
-
-Do NOT call `cleanup_demo`. Do NOT drop anything. The instructor will reset
-this laptop's state via `instructor-reset-all-labs.sh` between booth sessions.
-
-### Instructor laptop (HOL_INSTRUCTOR == "true")
-
-If the instructor types "cleanup" on the instructor laptop, proceed with the
-two-call preview-then-execute flow using `mcp__se-demo__cleanup_demo`:
-
-1. **Preview call** — `confirmed=false`:
-   - `schema_prefix`: the prefix used in this session (from Step 1.3)
-   - `industry`: the industry used in this session
-   - `database`: auto-resolved from `SNOWFLAKE_DATABASE` env var
-   - `confirmed`: `false`
-
-   Show the preview output (what will be dropped/deleted).
-
-2. **Confirmation prompt**:
-
-   > "Ready to execute cleanup for `$schema_prefix` / `$industry`? (yes/no)"
-
-3. **Execute call** — `confirmed=true` — only after explicit "yes":
-   - Same args with `confirmed: true`
-
-4. Report results with per-tier ✓/✗ markers.
-
-For cross-laptop reset (all 7 labusers in one go), the instructor runs
-`./instructor-reset-all-labs.sh --confirm` from a terminal instead — that
-script iterates all 7 destinations using each labuser's scoped credentials
-loaded from 1Password at runtime.
+1. **FIRST** call `mcp__se-demo__cleanup_demo` with `confirmed=false` to get a preview of what will be removed.
+2. Show the preview to the user and ask: "Should I go ahead and execute the cleanup?"
+3. **WAIT for the user to say "yes"** before proceeding. Do NOT execute automatically after the preview.
+4. **ONLY after the user confirms**, call `mcp__se-demo__cleanup_demo` with `confirmed=true` to execute.
+5. Show the results.
 
 ---
 
@@ -695,7 +556,7 @@ loaded from 1Password at runtime.
 - Mention: "In production, Fivetran Activations would push this to Slack, Salesforce, or your custom app"
 
 ### If sync takes longer than expected:
-- Share the 4 educational content blocks and then wait for the SE to say "check"
+- Share the 4 context content blocks and then wait for the SE to say "check"
 - DO NOT poll repeatedly — check only when the SE asks
 - DO NOT fall back to a different schema — ALWAYS use the one created in Step 2
 - Small datasets (under 1000 rows) should sync in under 2 minutes once the scheduler picks it up
@@ -711,14 +572,17 @@ loaded from 1Password at runtime.
 5. **NEVER skip the activation step** — it completes the ODI story
 6. **NEVER fall back to a different schema** — always use the exact schema created by the connector in Step 2. Do not look for or use pre-existing schemas from prior runs.
 7. **NEVER make up explanations** — if the sync is still queued, say it's still queued. Do not invent stories about pre-loaded data or shared datasets.
-8. **NEVER poll sync status more than once** — after triggering sync, check once, share educational content, then wait for the SE to say "check"
+8. **NEVER poll sync status more than once** — after triggering sync, check once, share context content, then wait for the SE to say "check"
 9. **NEVER change the user's schema prefix** — if the Fivetran API rejects a schema name (e.g., already exists), tell the user and ask for a new prefix. Do NOT invent a replacement.
 10. **NEVER use existing dbt objects** — always run `dbt_run` and `dbt_test` fresh. If pre-existing staging/mart/semantic schemas are found from prior runs, ignore them and run dbt anyway. The lab must show the full transformation.
-11. **NEVER use emojis** — use plain text markers (✓, >, ---) instead. No emoji characters anywhere in output.
+11. **NEVER use emojis** — use plain text markers (✓, >, ---) instead. No emoji characters anywhere in output (exception: Step 8 What's Next CTA uses visual markers intentionally).
 12. **Move fast within each step** — don't over-explain, don't re-confirm what's already known
+19. **ALWAYS read reference files when directed** — do not skip or improvise. The files contain specific branded messaging that must be presented verbatim.
 13. **Show progress markers** (✓) at each step completion
 14. **If a tool fails, use the fallback** — don't stall the lab
 15. **Brand everything as Fivetran** — Census is used behind the scenes for activation but refer to it as "Fivetran Activations"
 16. **NEVER say "reverse ETL"** — always say "Fivetran Activations" instead. The term "reverse ETL" is not part of Fivetran's branding.
-17. **NEVER output "Block 1", "Block 2", etc.** — those are internal timing cues for when to share educational content. Just share the content naturally without labeling it.
+17. **NEVER output "Block 1", "Block 2", etc.** — those are internal timing cues for when to share context content. Just share the content naturally without labeling it.
 18. **NEVER imply Fivetran is CLI-only** — when discussing programmatic control, acknowledge that Fivetran also has a full UI. The CLI/API approach is powerful but the UI is equally capable. Frame it as "you can do this from the CLI, the UI, or the API — your choice."
+19. **ALWAYS run the EXACT question the user selects in Step 6** — if user says "5", run question 5. NEVER start from question 1. NEVER run a different question than what was requested.
+20. **NEVER auto-run the next question in Step 6** — after answering one question, show the question list and STOP. Wait for the user to pick the next number or say "activate". Do NOT chain questions automatically.
