@@ -27,8 +27,6 @@ You just built a complete Open Data Infrastructure pipeline in under 20 minutes.
 
 **SCHEDULE A LUNCH & LEARN** -- Want to bring this to your team? We'll come to you. Ask us about scheduling a hands-on session at your company -- tailored to your data stack and goals.
 
-**TAKE THIS LAB HOME** -- Clone the lab repo and run it yourself: https://github.com/kellykohlleffel/fivetran-se-toolkit -- Everything you need -- skills, MCP servers, dbt project, and activation app -- ready to customize.
-
 *Thank you for joining the Fivetran x Snowflake Hands-on Lab at SF Summit 2026!*
 
 ## 8.3 Cleanup prompt
