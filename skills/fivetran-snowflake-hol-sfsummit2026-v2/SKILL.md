@@ -48,6 +48,19 @@ This creates clear visual section breaks in the chat UI. Do NOT skip these headi
 - **ALWAYS insert a blank line between every paragraph** in context content. Each block of text MUST be separated by an empty line (`\n\n`). Never run paragraphs together with only a single newline — the UI needs double newlines to render paragraph spacing. This is critical for readability.
 - These rules ensure consistent rendering across both Fivetran Code and Cortex Code VSCode extensions.
 
+## Educational Reference Files (MANDATORY — NO PARAPHRASING)
+
+Every step that says "read `references/educational/<file>.md`" is a HARD INSTRUCTION. These files contain the lab's curated educational narrative. Treat them as a teleprompter, not a prompt:
+
+- **READ the file via the Read tool. Do NOT skip the read.**
+- **Output the block text VERBATIM.** Do not rephrase, summarize, abbreviate, expand, reorder, merge, or substitute it with your own prose. The exact wording is intentional and reviewed.
+- **Do NOT generate alternative educational content** — even if you believe you can write something more relevant to the chosen industry. The blocks are industry-agnostic by design.
+- **Do NOT invent block titles, headings, or section labels** that aren't in the file (e.g., "What Fivetran is doing right now", "Why this matters for retail analytics", "The managed part of Move & Manage"). These are signs the model went off-script.
+- **Preserve block boundaries.** If the file says Block 1, Block 2, Block 3, output them in order, one at a time, with the timing cues in the file. Do not collapse them into a single response.
+- **Bolding, em dashes, and emphasis in the file are part of the verbatim output** — preserve them.
+
+If the file is missing or empty, STOP and tell the attendee the lab content file is missing — do NOT fall back to generated content.
+
 ## Lab Roadmap (Show First)
 
 When the skill is invoked, ALWAYS start by showing this roadmap AND asking for industry selection. Do NOT make any tool calls or run any prerequisites until the user selects an industry. This is mandatory even if no industry argument is provided.
@@ -155,9 +168,21 @@ Ready to start. **Step 2: Connect the source?**
 
 ## Step 2: MOVE — Connect the Source (3 min)
 
-### 2.1 Create the PostgreSQL Connector
+### 2.1 Resolve the PostgreSQL Password (DETERMINISTIC + VISIBLE)
 
-Use `setup_postgresql_connection` with **exactly** these parameters (substitute only the schema value):
+Before calling `setup_postgresql_connection`, resolve `PG_HOL_PASSWORD` by following these exact steps in order:
+
+1. **Make exactly ONE Read tool call** on `mcp-servers/se-demo/.env`. This file is populated by `setup.sh` from 1Password on lab laptops, and exists locally on Kelly's dev laptop. It is gitignored — the public repo never contains the password.
+2. Extract the value after `=` on the line that starts with `PG_HOL_PASSWORD=`. That string is the password.
+3. **MANDATORY VISIBILITY — Print this exact line to the chat before proceeding:**
+   `Resolved PG_HOL_PASSWORD from mcp-servers/se-demo/.env (length: <N> chars).`
+   where `<N>` is the actual length of the password string. Do NOT print the password value itself. This line is the SE's audit trail — without it, the SE cannot verify the deterministic Read happened. If you cannot print this line, you have not actually performed the Read and must stop.
+4. **DO NOT** use `grep`, `find`, ripgrep, or any search tool. **DO NOT** read any file in `setup/creds/`, the activation app, or anywhere else. The path above is the only authoritative source.
+5. **STOP-and-tell branch.** If the file is missing or `PG_HOL_PASSWORD` is empty, STOP and tell the attendee: *"The local `mcp-servers/se-demo/.env` is missing or has no `PG_HOL_PASSWORD`. On lab laptops this is populated by `setup.sh` from 1Password. On the dev laptop, copy the value from `setup/creds/labuser1.env`."* Do NOT attempt any fallback search or guess.
+
+### 2.2 Create the PostgreSQL Connector
+
+Use `setup_postgresql_connection` with **exactly** these parameters (substitute the password value resolved in 2.1 and the schema value from Step 1.3):
 
 ```json
 {
@@ -166,7 +191,7 @@ Use `setup_postgresql_connection` with **exactly** these parameters (substitute 
   "port": 5432,
   "database": "industry-se-demo",
   "user": "fivetran",
-  "password": "<PG_HOL_PASSWORD from mcp-servers/se-demo/.env>",
+  "password": "[value of PG_HOL_PASSWORD resolved in Step 2.1]",
   "schema": "[schema prefix from Step 1.3]",
   "connection_type": "google_cloud_postgresql",
   "update_method": "TELEPORT",
@@ -180,7 +205,7 @@ Use `setup_postgresql_connection` with **exactly** these parameters (substitute 
 
 This is a deterministic tool — one call handles: create → test → TLS cert approval → schema discovery.
 
-### 2.2 Select Tables
+### 2.3 Select Tables
 
 After `setup_postgresql_connection` returns with discovered schemas, use `update_schema_config` to enable ONLY the industry's schema and table, disabling all others.
 
@@ -195,12 +220,12 @@ The correct schema and table for each industry:
 
 If the schemas from `setup_postgresql_connection` are empty (discovery still pending), call `get_schema_config` and retry until schemas appear. Do NOT skip table selection — it must happen before syncing.
 
-### 2.3 Summary
+### 2.4 Summary
 
 Show what happened:
 > One API call — no UI. Fivetran handled TLS certificates, schema discovery, and replication method automatically. This connector is production-ready.
 
-### 2.4 Transition
+### 2.5 Transition
 
 Show:
 
@@ -228,7 +253,7 @@ Call `trigger_sync` with the connection_id from Step 2. This auto-unpauses the c
 - **DO NOT fall back to a different schema.** ALWAYS use the exact schema created by the connector in Step 2 (e.g., PHARMA_FIVETRAN_CODE_3_PHARMA). NEVER look for or use pre-existing schemas from prior lab runs.
 - **DO NOT make up explanations.** If the sync is still queued, say it's still queued — don't invent stories about pre-loaded data or shared datasets.
 
-After triggering the sync, check status ONCE with `get_connection_details`. Then **read `references/educational/step3_sync_context.md`** and share the context blocks naturally — one at a time with pauses between them — while the attendee waits for the sync. After all blocks, ask the attendee to say "check" when ready.
+After triggering the sync, check status ONCE with `get_connection_details`. Then **read `references/educational/step3_sync_context.md` with the Read tool and output Blocks 1–6 VERBATIM**, one at a time, with pauses between them, while the attendee waits for the sync. Do NOT paraphrase, do NOT generate your own retail/pharma/etc. industry-specific commentary, and do NOT invent block titles like "What Fivetran is doing right now" or "Why this matters for [industry]". The 6 blocks in the file are the only educational content allowed at this step. After all blocks, ask the attendee to say "check" when ready.
 
 Then wait for the attendee to say "check" (or similar). Only then call `get_connection_details` and verify in Snowflake.
 
@@ -263,7 +288,7 @@ Then show:
 
 ### Context
 
-**Read `references/educational/step4_transform_context.md`** and share the blocks before, during, and after dbt runs as indicated by the timing cues in the file.
+**Read `references/educational/step4_transform_context.md` with the Read tool and output its blocks VERBATIM** before, during, and after dbt runs as indicated by the timing cues in the file. Do NOT paraphrase or substitute your own dbt commentary.
 
 ### 4.1 Explain the dbt Project
 
@@ -358,7 +383,7 @@ Show:
 
 ### Context
 
-**Read `references/educational/step5_agent_context.md`** and share the blocks before and after agent creation as indicated by the timing cues in the file.
+**Read `references/educational/step5_agent_context.md` with the Read tool and output its blocks VERBATIM** before and after agent creation as indicated by the timing cues in the file. Do NOT paraphrase or substitute your own Cortex Agent commentary.
 
 ### 5.1 Create the Cortex Agent
 
@@ -453,7 +478,7 @@ Do NOT skip re-listing the questions. The SE should never have to scroll up.
 
 ### Context
 
-**Read `references/educational/step6_qa_context.md`** and weave the blocks in between questions as indicated by the timing cues in the file.
+**Read `references/educational/step6_qa_context.md` with the Read tool and output its blocks VERBATIM** in between questions as indicated by the timing cues in the file. Do NOT paraphrase or invent your own Q&A framing text.
 
 ### 6.3 Encourage Interaction
 
@@ -480,7 +505,7 @@ We've built the full pipeline: Source -> Move & Manage -> Transform -> Agent. No
 
 ### Context
 
-**Read `references/educational/step7_activate_context.md`** and share the blocks before and after activation as indicated by the timing cues in the file.
+**Read `references/educational/step7_activate_context.md` with the Read tool and output its blocks VERBATIM** before and after activation as indicated by the timing cues in the file. Do NOT paraphrase or substitute your own activation/Census commentary.
 
 ### 7.1 Activate Insights
 
@@ -518,7 +543,7 @@ The data appears in real-time on the industry tab.
 
 **This step ONLY runs after the user says "go" at the end of Step 7.** Do NOT show this content until the user explicitly says go.
 
-**Read `references/educational/step8_whats_next.md`** and present the lab summary (8.1), What's Next CTAs (8.2), and cleanup prompt (8.3) exactly as written in the file. Show all three sections in order. The What's Next CTA block uses emoji visual markers intentionally — this is an exception to the no-emoji rule.
+**Read `references/educational/step8_whats_next.md` with the Read tool and output sections 8.1 (lab summary), 8.2 (What's Next CTAs), and 8.3 (cleanup prompt) VERBATIM** in that order. Do NOT paraphrase, abbreviate, or skip any section. The What's Next CTA block uses emoji visual markers intentionally — this is an exception to the no-emoji rule.
 
 **STOP after showing the cleanup prompt. Do NOT run cleanup automatically. Only run cleanup if the user explicitly says "cleanup" or "yes".**
 
