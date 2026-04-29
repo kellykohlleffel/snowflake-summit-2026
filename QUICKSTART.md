@@ -1,29 +1,55 @@
 # Snowflake Summit 2026 HOL -- Quick Start
 
+## Two flows
+
+| Flow | Command | Use case |
+|------|---------|----------|
+| **Dev** | `./setup.sh` | Local development; placeholder creds you fill in manually |
+| **Dedicated lab laptop** | `./setup.sh <1-6>` | Bare/non-Fivetran-imaged Macs (labuser1–6); reads `setup/creds/labuser{N}.env`; runs unattended |
+| **Instructor laptop** | `./setup.sh 7` | Fivetran-imaged work laptops (labuser7); same script with interactive prompts + per-step backup of any prior skill dir; revert via `./restore-instructor-backup.sh --confirm` |
+| Any mode | add `--dry-run` | Preview phases; zero state changes |
+| Instructor | add `--auto` | Skip the interactive prompts (for re-runs) |
+
 ## Prerequisites
 
-Install these before running setup.sh. The script will check for each and tell you what's missing.
+setup.sh **auto-installs** any missing prerequisites via native Apple-signed installers (no Homebrew):
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Node.js | 18+ | [nodejs.org](https://nodejs.org/) (LTS .pkg) |
-| Python | 3.12+ | [python.org](https://python.org/downloads/) (.pkg) |
-| VSCode | Latest | [code.visualstudio.com](https://code.visualstudio.com/) |
-| Cortex Code CLI | Latest | [Snowflake docs](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli) |
-| GitHub CLI | Latest | Auto-installed by setup.sh |
-| Xcode CLT | Latest | Auto-installed by setup.sh |
+| Tool | Version |
+|------|---------|
+| Node.js | 20 LTS |
+| Python | 3.12+ |
+| VSCode | Latest |
+| Cortex Code CLI | Latest (Snowflake official installer) |
+| GitHub CLI | Latest |
+| Xcode CLT | Latest |
 
-**After installing VSCode**, enable the `code` command: `Cmd+Shift+P` > "Shell Command: Install 'code' command in PATH"
+The first thing `./setup.sh` does is check each prerequisite and install anything missing. You can run `./setup.sh --dry-run` to preview without making changes.
 
-**After installing Cortex Code CLI**, verify: `cortex --version`
+## Lab-laptop quick start (labuser1–6 or labuser7)
 
-If cortex is installed to `~/.local/bin`, add to PATH:
 ```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
+git clone https://github.com/kellykohlleffel/snowflake-summit-2026.git
+cd snowflake-summit-2026
+
+# Drop the per-laptop credential file at setup/creds/labuserN.env (Kelly distributes via 1Password/scp)
+ls -la setup/creds/labuser${N}.env
+
+# Optional preview
+./setup.sh ${N} --dry-run
+
+# Run it
+./setup.sh ${N}
 ```
 
-## Setup (5 minutes)
+**On lab laptops 1–6:** runs unattended; safe-merges credentials from `setup/creds/labuser${N}.env` into VSCode `settings.json`, `~/.fivetran-code/config.json`, `~/.snowflake/connections.toml`, and `mcp-servers/se-demo/.env`. Existing keys you didn't manage are preserved by the safe-merge.
+
+**On instructor laptop 7:** same flow, plus:
+- Interactive prompts before each major phase ("About to: X. Press Enter to proceed."). Read the description; press Enter to continue, or Ctrl-C to abort.
+- Skill directory at `~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2/` is backed up to `~/.summit-hol-backups/<TS>-labuser7/skills/` before overwrite. Revert any time with `./restore-instructor-backup.sh --confirm`.
+- The lab VSIX (`fivetran-kkohlleffel.cortex-code-for-vscode@0.1.0`) installs alongside any existing Cortex Code, Fivetran Code, Snowflake, or Databricks extensions — different publisher.name, no collision.
+- Pass `--auto` to skip the interactive prompts on subsequent re-runs.
+
+## Dev-flow quick start (no LABUSER_NUM)
 
 ```bash
 git clone https://github.com/kellykohlleffel/snowflake-summit-2026.git
@@ -31,13 +57,9 @@ cd snowflake-summit-2026
 ./setup.sh
 ```
 
-The script is re-runnable. If it stops (missing prerequisite, auth needed), fix the issue and run it again.
+Setup writes config templates with `YOUR_*` placeholders. Fill them in:
 
-## Credentials
-
-After setup.sh completes, fill in 3 config files:
-
-### File 1: ~/.fivetran-code/config.json
+### File 1: `~/.fivetran-code/config.json`
 
 ```json
 {
@@ -49,7 +71,7 @@ After setup.sh completes, fill in 3 config files:
 }
 ```
 
-### File 2: ~/.snowflake/connections.toml
+### File 2: `~/.snowflake/connections.toml`
 
 ```toml
 default_connection_name = "summit-hol"
@@ -62,9 +84,9 @@ warehouse = "HANDS_ON_LAB_WAREHOUSE"
 database = "your-snowflake-database"
 ```
 
-### File 3: mcp-servers/se-demo/.env
+### File 3: `mcp-servers/se-demo/.env`
 
-Fill in lines 2-4 and 8 (Snowflake credentials and database) plus lines 16-18 (Fivetran API credentials).
+Copy from `mcp-servers/se-demo/.env.example` and fill in Snowflake + Fivetran + PG_HOL_PASSWORD values. This file is gitignored.
 
 ## Verify
 
@@ -73,12 +95,26 @@ Fill in lines 2-4 and 8 (Snowflake credentials and database) plus lines 16-18 (F
 3. Type: `list my groups` (verifies Fivetran MCP server)
 4. Type: `/fivetran-snowflake-hol-sfsummit2026-v2` (runs the HOL)
 
-## Lab Laptop Prep
+The skill walks through the 8-step lab flow:
 
-Each lab laptop needs:
-- Its own Snowflake user (e.g., `hol_lab_user3`)
-- Its own Snowflake database (e.g., `HOL_DATABASE_3`)
-- A laptop ID for activation app isolation (e.g., `lab3`)
-- Shared: Fivetran API key/secret, Anthropic API key, Snowflake account
+1. Prerequisites Check
+2. MOVE -- Fivetran Connects the Source
+3. MOVE & MANAGE -- Fivetran Syncs to Snowflake
+4. TRANSFORM -- Build dbt Project
+5. AGENT -- Create & Deploy Cortex Agent
+6. ASK -- Interactive Q&A
+7. ACTIVATE -- Fivetran pushes to the Business App
+8. What's Next?
 
-Run setup.sh on each laptop, fill in that laptop's credentials, verify with `list my groups`.
+## Reverting an instructor-mode setup.sh run
+
+```bash
+./restore-instructor-backup.sh --dry-run    # preview
+./restore-instructor-backup.sh --confirm    # apply
+```
+
+Restores `~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2/` from the most recent backup at `~/.summit-hol-backups/.latest`. Idempotent.
+
+## Between-session cleanup (instructors)
+
+To purge attendee-created Snowflake schemas between lab sessions, run the skill's `cleanup_demo` MCP tool from each laptop (the lab skill exposes this at Step 8). For Fivetran connector + activation-app cleanup across all 7 laptops, use `./instructor-reset-all-labs.sh`.

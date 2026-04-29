@@ -23,18 +23,21 @@ TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # this same script wouldn't find the newly-installed binaries.
 export PATH="$HOME/.local/bin:$PATH"
 
-# --- Parse args (LABUSER_NUM positional + optional --dry-run flag) ---
+# --- Parse args (LABUSER_NUM positional + optional --dry-run / --auto flags) ---
 LABUSER_NUM=""
 DRY_RUN=0
+AUTO_CONFIRM=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
+    --auto)    AUTO_CONFIRM=1 ;;
     [1-7])     LABUSER_NUM="$arg" ;;
     *)
       echo "Error: Unknown argument '$arg'" >&2
-      echo "Usage: ./setup.sh [1-7] [--dry-run]" >&2
+      echo "Usage: ./setup.sh [1-7] [--dry-run] [--auto]" >&2
       echo "  [1-7]      Lab-laptop mode, uses setup/creds/labuser{N}.env" >&2
       echo "  --dry-run  Preview prereq installs without executing (no state changes)" >&2
+      echo "  --auto     Skip the per-phase Enter prompts in instructor mode (labuser7 only)" >&2
       exit 1
       ;;
   esac
@@ -52,6 +55,16 @@ else
   [ "$DRY_RUN" = "1" ] && echo "[setup.sh] Running in DRY RUN mode -- no state changes"
 fi
 
+# Derive instructor flag at parse time so Step 7 (skill install) and the
+# verbose/interactive flow can branch on it. (Previously this was set inside
+# Step 10 -- too late for the early phases.)
+if [ "$LABUSER_NUM" = "7" ]; then
+  HOL_INSTRUCTOR_VAL="true"
+else
+  HOL_INSTRUCTOR_VAL="false"
+fi
+export HOL_INSTRUCTOR_VAL
+
 # Per-laptop credential file location. Lab mode expects this file to exist on
 # the laptop before setup.sh runs — staged once via scp/USB from Kelly's laptop.
 # Not committed (setup/creds/ is in .gitignore).
@@ -66,6 +79,26 @@ info()  { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[ACTION NEEDED]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 step()  { echo -e "\n${BOLD}Step $1: $2${NC}"; }
+
+# confirm "<what's about to happen>" -- instructor-mode interactive gate.
+#
+# Lab modes 1-6 (HOL_INSTRUCTOR_VAL=false): no-op. Bulk provisioning runs unattended.
+# Instructor mode (LABUSER_NUM=7) with --auto: no-op. Operator opted out.
+# Instructor mode default: prints the message and waits for Enter (or Ctrl-C to abort).
+# DRY_RUN mode: no-op (we want the dry-run preview to flow uninterrupted).
+#
+# Goal: instructor (labuser7) sees what's about to happen at each phase and can
+# review before proceeding. Lab laptops and dev mode keep the original non-interactive
+# behavior. Pass --auto on labuser7 to skip prompts on re-runs.
+confirm() {
+  local msg="$1"
+  if [ "$HOL_INSTRUCTOR_VAL" = "true" ] && [ "$AUTO_CONFIRM" = "0" ] && [ "$DRY_RUN" = "0" ]; then
+    echo ""
+    echo -e "${YELLOW}--- About to: ${msg}${NC}"
+    echo -n "Press Enter to proceed (or Ctrl-C to abort): "
+    read -r _
+  fi
+}
 
 pause_and_exit() {
   echo ""
@@ -442,6 +475,7 @@ echo "========================================="
 # Step 0: Xcode Command Line Tools (macOS)
 # -------------------------------------------
 step "0" "Checking Xcode Command Line Tools..."
+confirm "Check for Xcode Command Line Tools (required for git). If missing, a one-time macOS install dialog will appear -- click Install and wait."
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   if ! xcode-select -p &> /dev/null; then
@@ -461,6 +495,7 @@ fi
 # Step 1: Prerequisites walkthrough
 # -------------------------------------------
 step "1" "Prerequisites walkthrough..."
+confirm "Check installed prerequisites (Node 20, Python 3.12, VSCode, Cortex Code CLI, gh) and auto-install any missing ones via native Apple-signed .pkg installers. Also persists ~/.local/bin to ~/.zshrc for future shells."
 
 # Git comes with Xcode CLT (already verified in Step 0), so just report it.
 if command -v git >/dev/null 2>&1; then
@@ -497,6 +532,7 @@ print_prereq_summary
 # authenticated we report it, if not we skip silently -- they can run
 # `gh auth login` themselves if/when they need it for their dev workflow.
 step "2" "Checking GitHub authentication..."
+confirm "Check GitHub CLI auth status only. Skipped entirely on lab laptops 1-6 (no GitHub token stored on attendee-facing machines). On instructor laptop 7 / dev mode, reports current auth state without modifying it."
 
 if [ "$LAB_MODE" = "1" ] && [ "$LABUSER_NUM" != "7" ]; then
   info "Skipping GitHub auth (lab-laptop mode: public repo, no token needed on this machine)"
@@ -533,6 +569,7 @@ fi
 # Step 3: Fix npm cache permissions if needed
 # -------------------------------------------
 step "3" "Checking npm setup..."
+confirm "Configure npm cache permissions if needed (avoids EACCES errors during the next two build steps)."
 
 NPM_CACHE_DIR="$HOME/.npm"
 if [ -d "$NPM_CACHE_DIR" ]; then
@@ -552,6 +589,7 @@ fi
 # Step 4: Build Cortex Code VSCode extension
 # -------------------------------------------
 step "4" "Building Cortex Code VSCode extension..."
+confirm "Build the lab Cortex Code VSIX from cortex-code/ (npm install + tsup) and install it as 'fivetran-kkohlleffel.cortex-code-for-vscode'. This unique publisher.name does NOT collide with any other Cortex Code, Fivetran Code, Snowflake, or Databricks extensions you have -- they all coexist."
 
 cd "$TOOLKIT_DIR/cortex-code"
 
@@ -592,6 +630,7 @@ info "Cortex Code VSCode extension installed ($VSIX_FILE)"
 # Step 5: Build Fivetran Code MCP Server
 # -------------------------------------------
 step "5" "Building Fivetran Code MCP Server..."
+confirm "Build the Fivetran Code MCP server (npm install + tsup build) -- writes artifacts to fivetran-code/dist/."
 
 cd "$TOOLKIT_DIR/fivetran-code"
 
@@ -616,6 +655,7 @@ fi
 # Step 6: Set up SE Demo MCP Server
 # -------------------------------------------
 step "6" "Setting up SE Demo MCP Server..."
+confirm "Set up the SE Demo MCP server: create a Python venv at mcp-servers/se-demo/.venv (only if missing) and install requirements; create mcp-servers/se-demo/.env from .env.example only if it does not already exist (any existing .env on this laptop is preserved unchanged)."
 
 cd "$TOOLKIT_DIR/mcp-servers/se-demo"
 
@@ -661,12 +701,27 @@ info "SE Demo MCP Server ready"
 # Step 7: Install HOL skill files
 # -------------------------------------------
 step "7" "Installing HOL skill files..."
+confirm "Install the HOL skill at ~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2 from this repo's skills/ directory. On instructor laptop 7, any existing skill copy at this path will FIRST be backed up to ~/.summit-hol-backups/<TS>-labuser7/skills/ (revertible via ./restore-instructor-backup.sh --confirm). On lab laptops 1-6, no backup is taken (bare laptops have no prior skill)."
 
 SKILL_SRC="$TOOLKIT_DIR/skills/fivetran-snowflake-hol-sfsummit2026-v2"
 SKILL_DST="$HOME/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2"
 
 if [ -d "$SKILL_SRC" ]; then
   mkdir -p "$HOME/.claude/skills"
+
+  # instructor-safety: back up any existing skill before destructive rm -rf + cp -r.
+  # No-op for labuser1-6 (no prior skill dir on bare laptops). Preserves daily-work
+  # copy on labuser7 so the operator can revert via ./restore-instructor-backup.sh.
+  if [ -d "$SKILL_DST" ] && [ "$HOL_INSTRUCTOR_VAL" = "true" ]; then
+    BACKUP_TS="$(date +%Y%m%d-%H%M%S)"
+    BACKUP_ROOT="$HOME/.summit-hol-backups/${BACKUP_TS}-labuser${LABUSER_NUM}"
+    mkdir -p "$BACKUP_ROOT/skills"
+    cp -R "$SKILL_DST" "$BACKUP_ROOT/skills/"
+    echo "$BACKUP_ROOT" > "$HOME/.summit-hol-backups/.latest"
+    info "Instructor backup: prior skill saved to $BACKUP_ROOT/skills/"
+    info "  Revert command:  ./restore-instructor-backup.sh --confirm"
+  fi
+
   rm -rf "$SKILL_DST"
   cp -r "$SKILL_SRC" "$HOME/.claude/skills/"
   info "HOL skill installed to ~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2/"
@@ -679,6 +734,7 @@ fi
 # Step 8: Set up credentials and config
 # -------------------------------------------
 step "8" "Setting up credentials and config..."
+confirm "Seed credential template files (~/.fivetran-code/config.json and ~/.snowflake/connections.toml) with YOUR_* placeholders ONLY in dev mode. In lab mode (any LABUSER_NUM), this step is essentially a no-op; Step 10 safe-merges real values from setup/creds/labuser{N}.env."
 
 # --- ~/.fivetran-code/config.json ---
 CONFIG_DIR="$HOME/.fivetran-code"
@@ -741,6 +797,7 @@ fi
 # Step 9: Configure MCP servers for Cortex
 # -------------------------------------------
 step "9" "Configuring MCP servers for Cortex Code..."
+confirm "Configure Cortex Code MCP servers via safe-merge in ~/.snowflake/cortex/mcp.json (preserves any existing MCP server entries you have configured -- only adds the lab's fivetran-code and se-demo entries)."
 
 MCP_CONFIG_DIR="$HOME/.snowflake/cortex"
 MCP_CONFIG_FILE="$MCP_CONFIG_DIR/mcp.json"
@@ -798,6 +855,7 @@ fi
 # -------------------------------------------
 if [ "$LAB_MODE" = "1" ]; then
   step "10" "Lab mode: loading labuser ${LABUSER_NUM} credentials from setup/creds/..."
+  confirm "Load credentials from setup/creds/labuser${LABUSER_NUM}.env and safe-merge them into VSCode settings.json, ~/.fivetran-code/config.json, ~/.snowflake/connections.toml, and mcp-servers/se-demo/.env. Safe-merge means: existing keys NOT managed by lab mode are preserved; only the lab-specific keys are updated. Backup of all four target files is taken to ~/.summit-hol-backups/<TS>-labuser${LABUSER_NUM}/ first."
 
   # Per-laptop credential file — must be pre-staged on the laptop (scp/USB).
   # NOT committed to the repo (setup/creds/ is in .gitignore).
@@ -878,11 +936,8 @@ if [ "$LAB_MODE" = "1" ]; then
   SF_LAB_ROLE="SF_LABUSER${LABUSER_NUM}_ROLE"
   SF_LAB_DB="SF_LABUSER${LABUSER_NUM}_DB"
   LAPTOP_ID_VAL="laptop${LABUSER_NUM}"
-  if [ "$LABUSER_NUM" = "7" ]; then
-    HOL_INSTRUCTOR_VAL="true"
-  else
-    HOL_INSTRUCTOR_VAL="false"
-  fi
+  # HOL_INSTRUCTOR_VAL is set at arg-parse time (top of this script) so
+  # earlier phases (Step 7 skill backup, confirm() prompts) can branch on it.
 
   info "Resolved identity: user=$SF_LAB_USER role=$SF_LAB_ROLE db=$SF_LAB_DB laptop_id=$LAPTOP_ID_VAL instructor=$HOL_INSTRUCTOR_VAL"
 
@@ -1074,6 +1129,13 @@ print(f"[OK] Safe-merged into {path}: {len(seen)} lab keys updated, "
       f"{len(missing)} added, {len(preserved_keys)} existing preserved")
 PYEOF
   info "Lab-mode creds written (LAPTOP_ID=$LAPTOP_ID_VAL, HOL_INSTRUCTOR=$HOL_INSTRUCTOR_VAL)"
+
+  if [ "$HOL_INSTRUCTOR_VAL" = "true" ] && [ -f "$HOME/.summit-hol-backups/.latest" ]; then
+    echo ""
+    echo -e "${YELLOW}── Instructor mode: backup created at $(cat "$HOME/.summit-hol-backups/.latest")${NC}"
+    echo -e "${YELLOW}── To revert this run:  ./restore-instructor-backup.sh --confirm${NC}"
+    echo ""
+  fi
 
   # Run verification if verify.sh exists
   if [ -x "$TOOLKIT_DIR/setup/verify.sh" ]; then
