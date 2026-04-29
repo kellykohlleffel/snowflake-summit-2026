@@ -31,12 +31,12 @@ If either is missing, tell the attendee: "The lab environment is missing a requi
 
 At the START of every step (Steps 1-8), output the step heading as a markdown `##` header BEFORE doing anything else for that step. Use these exact headings:
 - `## Step 1: Prerequisites Check`
-- `## Step 2: MOVE — Connect the Source`
-- `## Step 3: MOVE & MANAGE — Sync Data to Snowflake`
-- `## Step 4: TRANSFORM — Build & Run dbt Project`
+- `## Step 2: MOVE — **Fivetran** Connects the Source`
+- `## Step 3: MOVE & MANAGE — **Fivetran** Syncs to Snowflake`
+- `## Step 4: TRANSFORM — Build **dbt** Project`
 - `## Step 5: AGENT — Create & Deploy Cortex Agent`
 - `## Step 6: ASK — Interactive Q&A`
-- `## Step 7: ACTIVATE — Push to Business App`
+- `## Step 7: ACTIVATE — **Fivetran** pushes to the Business App`
 - `## Step 8: What's Next?`
 
 This creates clear visual section breaks in the chat UI. Do NOT skip these headings.
@@ -70,12 +70,12 @@ When the skill is invoked, ALWAYS start by showing this roadmap AND asking for i
 | Step | Phase | Time |
 |------|-------|------|
 | 1 | Prerequisites Check | 2 min |
-| 2 | MOVE: Connect the Source | 3 min |
-| 3 | MOVE & MANAGE: Sync to Snowflake | 3-5 min |
-| 4 | TRANSFORM: Build dbt Project | 5-8 min |
+| 2 | MOVE: **Fivetran** Connects the Source | 3 min |
+| 3 | MOVE & MANAGE: **Fivetran** Syncs to Snowflake | 3-5 min |
+| 4 | TRANSFORM: Build **dbt** Project | 5-8 min |
 | 5 | AGENT: Create & Deploy Cortex Agent | 3 min |
 | 6 | ASK: Interactive Q&A | 5-8 min |
-| 7 | ACTIVATE: Push to Business App | 2-3 min |
+| 7 | ACTIVATE: **Fivetran** pushes to the Business App | 2-3 min |
 | 8 | What's Next? | 1 min |
 
 **Industry:** [selected below] | **MCP Servers:** fivetran-code + se-tools
@@ -166,7 +166,7 @@ Ready to start. **Step 2: Connect the source?**
 
 ---
 
-## Step 2: MOVE — Connect the Source (3 min)
+## Step 2: MOVE — **Fivetran** Connects the Source (3 min)
 
 ### 2.1 Resolve the PostgreSQL Password (DETERMINISTIC + VISIBLE)
 
@@ -175,8 +175,8 @@ Before calling `setup_postgresql_connection`, resolve `PG_HOL_PASSWORD` by follo
 1. **Make exactly ONE Read tool call** on `mcp-servers/se-demo/.env`. This file is populated by `setup.sh` from 1Password on lab laptops, and exists locally on Kelly's dev laptop. It is gitignored — the public repo never contains the password.
 2. Extract the value after `=` on the line that starts with `PG_HOL_PASSWORD=`. That string is the password.
 3. **MANDATORY VISIBILITY — Print this exact line to the chat before proceeding:**
-   `Resolved PG_HOL_PASSWORD from mcp-servers/se-demo/.env (length: <N> chars).`
-   where `<N>` is the actual length of the password string. Do NOT print the password value itself. This line is the SE's audit trail — without it, the SE cannot verify the deterministic Read happened. If you cannot print this line, you have not actually performed the Read and must stop.
+   `Resolved PG_HOL_PASSWORD.`
+   Do NOT print the password value itself, the file path, or the length — attendees should not see where the .env is or how long the secret is. This line is the SE's audit trail — without it, the SE cannot verify the deterministic Read happened. If you cannot print this line, you have not actually performed the Read and must stop.
 4. **DO NOT** use `grep`, `find`, ripgrep, or any search tool. **DO NOT** read any file in `setup/creds/`, the activation app, or anywhere else. The path above is the only authoritative source.
 5. **STOP-and-tell branch.** If the file is missing or `PG_HOL_PASSWORD` is empty, STOP and tell the attendee: *"The local `mcp-servers/se-demo/.env` is missing or has no `PG_HOL_PASSWORD`. On lab laptops this is populated by `setup.sh` from 1Password. On the dev laptop, copy the value from `setup/creds/labuser1.env`."* Do NOT attempt any fallback search or guess.
 
@@ -240,7 +240,7 @@ Show:
 
 ---
 
-## Step 3: MOVE — Sync Data to Snowflake (3-5 min)
+## Step 3: MOVE & MANAGE — **Fivetran** Syncs to Snowflake (3-5 min)
 
 ### 3.1 Trigger Initial Sync
 
@@ -284,7 +284,7 @@ Then show:
 
 ---
 
-## Step 4: TRANSFORM — Build & Run dbt Project (5-8 min)
+## Step 4: TRANSFORM — Build **dbt** Project (5-8 min)
 
 ### Context
 
@@ -501,7 +501,7 @@ We've built the full pipeline: Source -> Move & Manage -> Transform -> Agent. No
 
 ---
 
-## Step 7: ACTIVATE — Push to Business App (2-3 min)
+## Step 7: ACTIVATE — **Fivetran** pushes to the Business App (2-3 min)
 
 ### Context
 
