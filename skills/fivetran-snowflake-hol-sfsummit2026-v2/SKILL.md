@@ -172,13 +172,14 @@ Ready to start. **Step 2: Connect the source?**
 
 Before calling `setup_postgresql_connection`, resolve `PG_HOL_PASSWORD` by following these exact steps in order:
 
-1. **Make exactly ONE Read tool call** on `mcp-servers/se-demo/.env`. This file is populated by `setup.sh` from 1Password on lab laptops, and exists locally on Kelly's dev laptop. It is gitignored — the public repo never contains the password.
-2. Extract the value after `=` on the line that starts with `PG_HOL_PASSWORD=`. That string is the password.
-3. **MANDATORY VISIBILITY — Print this exact line to the chat before proceeding:**
+1. **Determine the absolute path of the repo root.** Make ONE Bash tool call: `git rev-parse --show-toplevel`. The output is the absolute path of the repo on this laptop. This is required because Cortex Code's working directory is not guaranteed to be the workspace root, so a relative path like `mcp-servers/se-demo/.env` does not always resolve to the right file (verified failing on lab laptop 1, 2026-04-30, even though setup.sh wrote the .env to the correct location).
+2. **Make exactly ONE Read tool call** on `<repo-root>/mcp-servers/se-demo/.env` — i.e., the absolute path obtained in step 1 with `/mcp-servers/se-demo/.env` appended. This file is populated by `setup.sh` from `setup/creds/labuser{N}.env` on lab laptops, and exists locally on Kelly's dev laptop. It is gitignored — the public repo never contains the password.
+3. Extract the value after `=` on the line that starts with `PG_HOL_PASSWORD=`. That string is the password.
+4. **MANDATORY VISIBILITY — Print this exact line to the chat before proceeding:**
    `Resolved PG_HOL_PASSWORD.`
    Do NOT print the password value itself, the file path, or the length — attendees should not see where the .env is or how long the secret is. This line is the SE's audit trail — without it, the SE cannot verify the deterministic Read happened. If you cannot print this line, you have not actually performed the Read and must stop.
-4. **DO NOT** use `grep`, `find`, ripgrep, or any search tool. **DO NOT** read any file in `setup/creds/`, the activation app, or anywhere else. The path above is the only authoritative source.
-5. **STOP-and-tell branch.** If the file is missing or `PG_HOL_PASSWORD` is empty, STOP and tell the attendee: *"The local `mcp-servers/se-demo/.env` is missing or has no `PG_HOL_PASSWORD`. On lab laptops this is populated by `setup.sh` from 1Password. On the dev laptop, copy the value from `setup/creds/labuser1.env`."* Do NOT attempt any fallback search or guess.
+5. **DO NOT** use `grep`, `find`, ripgrep, or any other search tool. **DO NOT** read any file in `setup/creds/`, the activation app, or anywhere outside `<repo-root>/mcp-servers/se-demo/.env`. Bash for `git rev-parse` and Read for the .env are the only allowed tool calls in this step.
+6. **STOP-and-tell branch.** If `git rev-parse` fails (not in a git repo), OR the .env file does not exist at the resolved path, OR the `PG_HOL_PASSWORD` line is missing, OR the value after `=` is empty, STOP and tell the attendee: *"The local `mcp-servers/se-demo/.env` is missing or has no `PG_HOL_PASSWORD`. On lab laptops this is populated by `setup.sh` from `setup/creds/labuser{N}.env`. Re-run `./setup.sh <N>` to populate it. On Kelly's dev laptop, copy the value from `setup/creds/labuser1.env` manually."* Do NOT attempt any fallback search or guess.
 
 ### 2.2 Create the PostgreSQL Connector
 
