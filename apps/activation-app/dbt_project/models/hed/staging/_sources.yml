@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: hed
-    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    database: "{{ var('snowflake_database', target.database) }}"
     schema: "{{ var('hed_source_schema', 'HED_HIGHER_EDUCATION') }}"
     description: "Higher education student records synced by Fivetran from Google Cloud PostgreSQL"
     tables:

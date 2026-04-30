@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: supply_chain
-    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    database: "{{ var('snowflake_database', target.database) }}"
     schema: "{{ var('supply_chain_source_schema', 'SUPPLY_CHAIN_SUPPLY_CHAIN') }}"
     description: "Supply chain demand forecast data synced by Fivetran from Google Cloud PostgreSQL"
     tables:
