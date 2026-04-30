@@ -28,8 +28,8 @@ npm install
 echo -e "${BOLD}[2/3] Building React app (npm run build)${NC}"
 npm run build
 
-echo -e "${BOLD}[3/3] Deploying to Firebase hosting (fivetran-activation-demo)${NC}"
-firebase deploy --only hosting:fivetran-activation-demo
+echo -e "${BOLD}[3/3] Deploying to Firebase hosting (target: activation-demo -> site: fivetran-activation-demo)${NC}"
+firebase deploy --only hosting:activation-demo
 
 echo ""
 echo -e "${GREEN}Deploy complete.${NC}"
