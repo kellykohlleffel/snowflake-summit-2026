@@ -9,7 +9,7 @@ First, show this complete lab summary:
 - **MOVE & MANAGE:** PostgreSQL -> Fivetran -> Snowflake
 - **TRANSFORM:** dbt staging -> mart -> semantic view
 - **AGENT:** Cortex Agent answering business questions
-- **ACTIVATE:** Insights pushed to business app (real-time) -- https://fivetran-activation-demo.web.app/
+- **ACTIVATE:** Insights pushed to business app (real-time)
 
 *"From connectors to data agents to activation -- simple, automated, reliable and secure."*
 
