@@ -931,6 +931,17 @@ if [ "$LAB_MODE" = "1" ]; then
     pause_and_exit
   fi
 
+  # Optional Anthropic API key for the Cortex Code extension's status-bar
+  # token meter. The lab uses Snowflake Cortex Complete for the LLM, but
+  # the metering ribbon (Context%, tokens, Cache, $) calls Anthropic's
+  # free count_tokens endpoint to get real BPE counts. Without a valid
+  # anthropicApiKey in ~/.fivetran-code/config.json, the extension's
+  # token-counter falls back to zero and the ribbon stays blank.
+  # When ANTHROPIC_API_KEY is present in labuser{N}.env, the JSON
+  # safe-merge below writes it; when absent, we leave config.json's
+  # anthropicApiKey field untouched (operator opt-out).
+  ANTHROPIC_API_KEY_VAL="${ANTHROPIC_API_KEY:-}"
+
   # Derive per-labuser values
   SF_LAB_USER="SF_LABUSER${LABUSER_NUM}_USER"
   SF_LAB_ROLE="SF_LABUSER${LABUSER_NUM}_ROLE"
@@ -969,9 +980,9 @@ if [ "$LAB_MODE" = "1" ]; then
   # ---------------------------------------------------------------
 
   # 1. ~/.fivetran-code/config.json -- JSON safe-merge
-  python3 - "$CONFIG_FILE" "$FIVETRAN_API_KEY_VAL" "$FIVETRAN_API_SECRET_VAL" "$SNOWFLAKE_ACCOUNT_VAL" "$SNOWFLAKE_PAT_VAL" <<'PYEOF'
+  python3 - "$CONFIG_FILE" "$FIVETRAN_API_KEY_VAL" "$FIVETRAN_API_SECRET_VAL" "$SNOWFLAKE_ACCOUNT_VAL" "$SNOWFLAKE_PAT_VAL" "$ANTHROPIC_API_KEY_VAL" <<'PYEOF'
 import json, os, sys
-path, api_key, api_secret, sf_account, sf_pat = sys.argv[1:6]
+path, api_key, api_secret, sf_account, sf_pat, anth_key = sys.argv[1:7]
 existing = {}
 if os.path.exists(path):
     try:
@@ -988,6 +999,12 @@ lab_fields = {
     "snowflakeAccount": sf_account,
     "snowflakePatToken": sf_pat,
 }
+# Anthropic key is optional. When set in labuser{N}.env it gets written so
+# the Cortex Code extension's status-ribbon token meter works. When absent
+# we leave the existing field untouched (operator opt-out for instructors
+# who don't want metering or don't have a key staged).
+if anth_key:
+    lab_fields["anthropicApiKey"] = anth_key
 existing.update(lab_fields)
 os.makedirs(os.path.dirname(path), exist_ok=True)
 with open(path, "w") as f:
@@ -1161,10 +1178,13 @@ info "Cortex MCP config written to ~/.snowflake/cortex/mcp.json"
 echo ""
 
 # Check for placeholder credentials -- ONLY in dev mode. Lab mode has already
-# populated config via Step 10's safe-merge from labuser{N}.env, so any
-# leftover YOUR_ strings are in fields the lab flow doesn't need (e.g.,
-# anthropicApiKey -- token-counter cosmetic). verify.sh is authoritative
-# for lab-mode readiness; no point second-guessing it here.
+# populated config via Step 10's safe-merge from labuser{N}.env. As of the
+# 2026-04-30 status-ribbon fix, anthropicApiKey is no longer "cosmetic" --
+# when ANTHROPIC_API_KEY is set in labuser{N}.env, Step 10 writes it to
+# config.json and the Cortex Code extension's token-meter ribbon
+# (Context/tokens/Cache/$) functions. When absent, the field is left as-is
+# (legitimate opt-out for instructors who don't want metering). verify.sh
+# is authoritative for lab-mode readiness; no point second-guessing it here.
 NEEDS_CREDS=0
 
 if [ "$LAB_MODE" = "0" ]; then

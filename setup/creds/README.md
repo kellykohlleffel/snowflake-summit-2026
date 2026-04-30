@@ -34,6 +34,21 @@ PG_HOL_DATABASE=industry-se-demo
 PG_HOL_USER=fivetran
 ```
 
+Optional Anthropic key for the Cortex Code extension's status-bar token meter
+(Context%, tokens, Cache, $). Without this, the ribbon stays at zero — the
+lab still functions but the four meters at the bottom of Cortex Code show
+0% / 0 tokens / — / $0.0000:
+
+```
+ANTHROPIC_API_KEY=<sk-ant-...>
+```
+
+The lab uses Snowflake Cortex Complete for the LLM (no Anthropic invocation),
+but the ribbon calls Anthropic's free `count_tokens` endpoint to tokenize
+observed content and produce real BPE counts. A single key works across all
+7 lab + 7 instructor laptops because count_tokens is a no-cost,
+non-rate-limited endpoint.
+
 The setup.sh lab-mode block derives the rest per-labuser:
 - `SF_LABUSER{N}_USER` (Snowflake user)
 - `SF_LABUSER{N}_ROLE` (scoped Snowflake role)
