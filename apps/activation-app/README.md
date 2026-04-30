@@ -103,13 +103,35 @@ firebase deploy --only hosting:fivetran-activation-demo
 
 ### Cloud Run API
 
+The Fivetran GCP org enforces `constraints/storage.softDeletePolicySeconds`,
+which blocks `gcloud run deploy --source` (it tries to auto-create a staging
+bucket with the default 7-day soft-delete and gets denied). We deploy via
+build-and-push to Artifact Registry instead, matching the pse-platform
+pattern. Easiest path is the bundled script:
+
 ```bash
 cd api/
+./deploy.sh
+```
+
+Or run the underlying commands directly:
+
+```bash
+cd api/
+
+docker build --platform linux/amd64 \
+  -t us-central1-docker.pkg.dev/fivetran-fivetran-248-war-mraw/cloud-run-source-deploy/fivetran-activation-api:latest .
+
+docker push \
+  us-central1-docker.pkg.dev/fivetran-fivetran-248-war-mraw/cloud-run-source-deploy/fivetran-activation-api:latest
+
 gcloud run deploy fivetran-activation-api \
-  --source . \
-  --region us-central1 \
+  --image=us-central1-docker.pkg.dev/fivetran-fivetran-248-war-mraw/cloud-run-source-deploy/fivetran-activation-api:latest \
+  --region=us-central1 \
   --allow-unauthenticated
 ```
+
+The deploy keeps the same service URL (`https://fivetran-activation-api-81810785507.us-central1.run.app`) — Cloud Run just rolls a new revision. Lab laptops don't need any config change after deploy.
 
 ### dbt
 
