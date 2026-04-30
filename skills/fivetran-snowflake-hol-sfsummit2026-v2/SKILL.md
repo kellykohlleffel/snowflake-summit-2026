@@ -405,7 +405,9 @@ Call `mcp__se-demo__list_cortex_agents` with the database name to confirm the ag
 
 ### 5.3 Pre-warm the Agent
 
-Send a warm-up question via `query_cortex_agent` — e.g., "How many records are in the dataset?" Frame it as: "Let me verify the agent can answer questions." Show the brief result and move on.
+Send a warm-up question via `mcp__se-demo__cortex_analyst` — e.g., "How many records are in the dataset?" Frame it as: "Let me verify the agent can answer questions." Show the brief result and move on.
+
+**Why `cortex_analyst` (in se-demo MCP) and NOT `query_cortex_agent` (in fivetran-snowflake-hol-builder MCP):** the latter's REST endpoint construction is incompatible with the lab's Snowflake account (locator-format `aa67604.us-central1.gcp` returns 404 from query_cortex_agent's URL builder). `cortex_analyst` was fixed for this case in PR #20 — it constructs the correct REST host without the dot-to-dash mangling.
 
 ### 5.4 Summary
 
@@ -454,11 +456,11 @@ Pick a number, or ask your own question.
 
 **CRITICAL — RUN ONLY THE QUESTION THE USER SELECTED.** If the user says "5", run question 5. If the user says "2", run question 2. Do NOT start from question 1. Do NOT run multiple questions. Run exactly ONE question per user input.
 
-For the selected question, call `query_cortex_agent` (the native Fivetran Code tool, NOT `mcp__se-demo__cortex_analyst`). The native tool streams the agent's response progressively to the UI. The MCP tool returns a blob with no streaming.
+For the selected question, call `mcp__se-demo__cortex_analyst`. This tool calls Snowflake's Cortex Agent REST API directly with the correct host URL for both locator-format (`aa67604.us-central1.gcp`) and org-account-format Snowflake accounts (the dot-to-dash bug was fixed in PR #20).
 
-**CRITICAL:** Always use `query_cortex_agent` for Step 6 Q&A. Never use `mcp__se-demo__cortex_analyst` here.
+**CRITICAL:** Always use `mcp__se-demo__cortex_analyst` for Step 6 Q&A. Do NOT use `query_cortex_agent` (the native Fivetran Code tool) — it constructs an incompatible REST URL for locator-format accounts and returns 404 on the lab Snowflake account. `cortex_analyst` is the deterministic path that works on every laptop.
 
-**CRITICAL — PRESENT THE RESULTS:** After the `query_cortex_agent` tool completes, you MUST present the agent's key findings in your own response — with clean formatted tables, key metrics, and actionable insights. Do NOT just say "That answer came from..." — actually summarize the data the agent returned.
+**CRITICAL — PRESENT THE RESULTS:** After the `cortex_analyst` tool completes, you MUST present the agent's key findings in your own response — with clean formatted tables, key metrics, and actionable insights. Do NOT just say "That answer came from..." — actually summarize the data the agent returned.
 
 After presenting the results, briefly note the data flow:
 > That answer came from: PostgreSQL source -> Fivetran sync -> dbt transformation -> Cortex Agent. Automated end-to-end.
@@ -526,9 +528,16 @@ Call `mcp__se-demo__activate_to_app` with:
 
 ### 7.3 Show the React App
 
-Tell the SE: "Open the activation app in your browser: **[https://fivetran-activation-demo.web.app/](https://fivetran-activation-demo.web.app/)** — go to the **[industry]** tab."
+**Use the URL returned by `activate_to_app` in its `app_url` response field.** That field is constructed by the activation client to include `?laptop_id=<LAPTOP_ID>` when the lab is running with a `LAPTOP_ID` env var set (every lab + instructor laptop), so the React app's Firestore listener subscribes to the per-laptop scoped doc (`industries/<industry>_<laptop_id>`) where the records were just written. Without the `?laptop_id=X` query param, the app subscribes to the bare `industries/<industry>` doc — which is empty for lab/instructor mode and the attendee sees "Waiting for activation data..." even though the data is in Firestore.
 
-**IMPORTANT:** Always use the markdown link format `[https://fivetran-activation-demo.web.app/](https://fivetran-activation-demo.web.app/)` so it's clickable. Do NOT use any URL returned by the `activate_to_app` tool response — it may return a stale Cloud Run URL.
+Tell the SE in this format (substituting the actual `app_url` from the tool response):
+
+> Open the activation app: **[<app_url>](<app_url>)** — go to the **[industry]** tab.
+
+**IMPORTANT:**
+- Use the URL **from the tool response's `app_url` field**, not a hardcoded URL.
+- Format it as a markdown link `[<url>](<url>)` so it's clickable.
+- The URL will look like `https://fivetran-activation-demo.web.app?laptop_id=laptop1` on a lab laptop, or `https://fivetran-activation-demo.web.app` on Kelly's dev laptop (no LAPTOP_ID env). Either form is correct for its respective environment.
 
 The data appears in real-time on the industry tab.
 
