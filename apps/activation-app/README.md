@@ -108,8 +108,10 @@ Or run the underlying commands directly:
 ```bash
 npm install
 npm run build
-firebase deploy --only hosting:fivetran-activation-demo
+firebase deploy --only hosting:activation-demo
 ```
+
+(The `activation-demo` target maps to site `fivetran-activation-demo` via `.firebaserc` — the URL is `https://fivetran-activation-demo.web.app`.)
 
 Hosted at: `https://fivetran-activation-demo.web.app` (no query params for the dev flow / Kelly's flow) or `https://fivetran-activation-demo.web.app?laptop_id=laptopN` (per-laptop scoped for booth labs — Firestore listener subscribes to `industries/<industry>_laptopN`).
 
