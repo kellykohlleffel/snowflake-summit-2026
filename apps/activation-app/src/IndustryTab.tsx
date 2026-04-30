@@ -40,14 +40,26 @@ function inferFormat(key: string, records: Record<string, unknown>[]): "number" 
   return undefined;
 }
 
-/** Derive columns dynamically from the first data record */
+/** Derive columns dynamically from the first data record.
+ *
+ *  Keys are sorted alphabetically so column order is stable across refreshes.
+ *  Firestore's JS SDK does not guarantee field iteration order when
+ *  deserializing a document, so without sorting the columns can shuffle on
+ *  every render (lab laptop 1, 2026-04-30 -- attendee saw a different first
+ *  column on every page refresh, very disorienting).
+ *
+ *  When an industry config supplies an explicit `columns` array (see types.ts),
+ *  this function is bypassed entirely and the SE-curated order wins.
+ */
 function deriveColumns(records: Record<string, unknown>[]): ColumnDef[] {
   if (!records.length) return [];
-  return Object.keys(records[0]).map((key) => ({
-    key,
-    label: keyToLabel(key),
-    format: inferFormat(key, records),
-  }));
+  return Object.keys(records[0])
+    .sort()
+    .map((key) => ({
+      key,
+      label: keyToLabel(key),
+      format: inferFormat(key, records),
+    }));
 }
 
 function formatCell(value: unknown, format?: string): string {
@@ -157,7 +169,7 @@ export default function IndustryTab({ industry, darkMode }: Props) {
         <p className={`text-sm mt-2 ${darkMode ? "text-gray-600" : "text-gray-400"}`}>
           Run <code className={`px-2 py-0.5 rounded ${
             darkMode ? "text-gray-400 bg-gray-800" : "text-gray-600 bg-gray-200"
-          }`}>/fivetran-se-ai-solution-demo</code> in the Fivetran CLI
+          }`}>/fivetran-snowflake-hol-sfsummit2026-v2</code> in Cortex Code
         </p>
       </div>
     );

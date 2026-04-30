@@ -95,11 +95,23 @@ SNOWFLAKE_PRIVATE_KEY_PATH=~/.snowflake/dbt_rsa_key.p8
 
 ### React App
 
+The activation app has TWO independent deployments — the React frontend (Firebase hosting) and the Cloud Run API (next section). Each must be redeployed when its own source changes; one staying stale while the other is current is a common foot-gun.
+
+Easiest path is the bundled script (run from `apps/activation-app/`):
+
+```bash
+./deploy.sh
+```
+
+Or run the underlying commands directly:
+
 ```bash
 npm install
 npm run build
 firebase deploy --only hosting:fivetran-activation-demo
 ```
+
+Hosted at: `https://fivetran-activation-demo.web.app` (no query params for the dev flow / Kelly's flow) or `https://fivetran-activation-demo.web.app?laptop_id=laptopN` (per-laptop scoped for booth labs — Firestore listener subscribes to `industries/<industry>_laptopN`).
 
 ### Cloud Run API
 
