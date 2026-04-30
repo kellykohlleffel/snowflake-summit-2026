@@ -169,9 +169,12 @@ async def create_demo_cortex_agent(
     """
     import re
 
-    # DDL files live in the skill's references directory
+    # DDL files live in the skill's references directory.
+    # Path was historically pointed at the predecessor SE Demo skill
+    # (fivetran-se-ai-solution-demo); for Summit 2026 HOL it must point at
+    # the lab skill installed by setup.sh Step 7.
     ddl_dir = os.path.expanduser(
-        "~/.claude/skills/fivetran-se-ai-solution-demo/references/agents"
+        "~/.claude/skills/fivetran-snowflake-hol-sfsummit2026-v2/references/agents"
     )
     ddl_path = os.path.join(ddl_dir, industry, "create_cortex_agent.sql")
 

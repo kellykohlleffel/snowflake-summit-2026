@@ -15,6 +15,11 @@ class DbtClient:
         self.dbt_path = os.getenv("DBT_PATH", "dbt")
         self.project_dir = os.getenv("DBT_PROJECT_DIR", "")
         self.profiles_dir = os.getenv("DBT_PROFILES_DIR", "")
+        # DBT_PROFILE_TARGET: optional override for which profile target to use
+        # (e.g., "dev" or "lab"). When set, passed to dbt via --target. Without
+        # this, dbt would use the default target from profiles.yml (currently
+        # `dev`), which causes lab-mode runs to silently use the wrong database.
+        self.target = os.getenv("DBT_PROFILE_TARGET", "")
 
     def _validate(self) -> None:
         """Check that required paths are configured."""
@@ -47,6 +52,8 @@ class DbtClient:
             cmd.append("--full-refresh")
         if self.profiles_dir:
             cmd.extend(["--profiles-dir", self.profiles_dir])
+        if self.target:
+            cmd.extend(["--target", self.target])
 
         try:
             process = await asyncio.create_subprocess_exec(

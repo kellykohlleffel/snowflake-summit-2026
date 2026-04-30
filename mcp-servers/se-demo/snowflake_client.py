@@ -172,9 +172,21 @@ class SnowflakeClient:
         conn = self._connect(database=agent_db)
         try:
             token = conn.rest.token
-            # Build the host URL
-            account = self.account.replace(".", "-")
-            host = f"https://{account}.snowflakecomputing.com"
+            # Build the host URL.
+            #
+            # Use the account string as-is. Two account formats coexist:
+            #   - Locator format: "<locator>.<region>.<cloud>"
+            #     -> https://<locator>.<region>.<cloud>.snowflakecomputing.com
+            #     (lab account aa67604.us-central1.gcp uses this)
+            #   - Org-account format: "<org>-<account>"
+            #     -> https://<org>-<account>.snowflakecomputing.com
+            #     (Kelly's dev account a3209653506471-sales-eng-hands-on-lab)
+            #
+            # Both formats build a valid REST API host directly. The previous
+            # `account.replace(".", "-")` corrupted locator-format hosts: lab
+            # laptop 1 (2026-04-29) hit 404 on aa67604-us-central1-gcp.snowflakecomputing.com
+            # because Snowflake routes the locator form by literal dots.
+            host = f"https://{self.account}.snowflakecomputing.com"
 
             headers = {
                 "Authorization": f'Snowflake Token="{token}"',

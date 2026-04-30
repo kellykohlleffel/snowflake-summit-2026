@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: agriculture
-    database: "{{ var('snowflake_database', 'HOL_DATABASE_1') }}"
+    database: "{{ var('snowflake_database', target.database) }}"
     schema: "{{ var('agriculture_source_schema', 'AGRICULTURE_AGRICULTURE') }}"
     description: "Livestock and weather data synced by Fivetran from Google Cloud PostgreSQL"
     tables:
